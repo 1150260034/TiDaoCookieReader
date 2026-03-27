@@ -82,6 +82,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        AutomationReceiver.clearListener();
         unregisterAutomationReceiver();
     }
 

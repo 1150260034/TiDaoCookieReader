@@ -1,16 +1,13 @@
 package com.tidao.wuxia.app;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 
-import com.tidao.wuxia.app.cookie.BindingChecker;
 import com.tidao.wuxia.app.cookie.CookieExtractor;
 import com.tidao.wuxia.app.cookie.GameDatabaseReader;
-import com.tidao.wuxia.app.cookie.WebViewCookieReader;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,9 +36,6 @@ public class AutomationReceiver extends BroadcastReceiver {
     public static final String ACTION_CHECK_WELFARE = ACTION_PREFIX + "CHECK_WELFARE";
     public static final String ACTION_GET_STATUS = ACTION_PREFIX + "GET_STATUS";
 
-    // 结果文件路径
-    private static final String RESULT_FILE = "/data/data/com.tidao.wuxia.app/cache/result.txt";
-
     // 单例访问接口
     private static AutomationListener listener;
 
@@ -57,6 +51,10 @@ public class AutomationReceiver extends BroadcastReceiver {
 
     public static void setListener(AutomationListener l) {
         listener = l;
+    }
+
+    public static void clearListener() {
+        listener = null;
     }
 
     /**
