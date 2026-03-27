@@ -16,6 +16,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.tidao.wuxia.app.R;
+import com.tidao.wuxia.app.cookie.BindingChecker;
 import com.tidao.wuxia.app.cookie.CookieExtractor;
 import com.tidao.wuxia.app.cookie.GameDatabaseReader;
 import com.tidao.wuxia.app.cookie.WebViewCookieReader;
@@ -51,6 +52,7 @@ public class MainActivity extends Activity {
     private GameDatabaseReader gameDatabaseReader;
     private Handler mainHandler;
     private GameDatabaseReader.SingleRole selectedRole = null;
+    private String dailyWelfareCheckResult = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -247,7 +249,12 @@ public class MainActivity extends Activity {
             }
         }
 
-        copyToClipboard(sb.toString(), "Cookie + 角色信息");
+        // 添加每日福利检测结论
+        if (!dailyWelfareCheckResult.isEmpty()) {
+            sb.append("\n\n【每日福利检测】：").append(dailyWelfareCheckResult);
+        }
+
+        copyToClipboard(sb.toString(), "Cookie + 角色信息 + 每日福利检测");
         appendLog("已复制Cookie和角色信息到剪贴板");
         Toast.makeText(this, "已复制!", Toast.LENGTH_SHORT).show();
     }
@@ -377,9 +384,55 @@ public class MainActivity extends Activity {
         cookieData.areaid = roleInfo.area;
         cookieData.userId = roleInfo.uin;
 
-        updateStatus("读取成功！点「复制全部」");
-        updateButtons(true);
-        Toast.makeText(this, "读取完成!", Toast.LENGTH_SHORT).show();
+        // 开始检测每日福利绑定状态
+        checkDailyWelfareStatus();
+    }
+
+    /**
+     * 检测每日福利绑定状态
+     */
+    private void checkDailyWelfareStatus() {
+        appendLog("正在检测每日福利绑定状态...");
+        updateStatus("检测每日福利...");
+
+        // 设置绑定检测回调
+        BindingChecker.setOnBindingCheckListener(new BindingChecker.OnBindingCheckListener() {
+            @Override
+            public void onBindingCheckSuccess(boolean isBound, String area, String areaName, String roleName) {
+                mainHandler.post(() -> {
+                    if (isBound) {
+                        dailyWelfareCheckResult = "已绑定 | 角色: " + roleName + " | 区服: " + areaName;
+                        appendLog("每日福利检测: 已绑定 (" + roleName + ")");
+                    } else {
+                        dailyWelfareCheckResult = "未绑定";
+                        appendLog("每日福利检测: 未绑定");
+                    }
+                    updateStatus("读取成功！点「复制全部」");
+                    updateButtons(true);
+                    Toast.makeText(MainActivity.this, "读取完成!", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onBindingCheckFailed(String error, boolean isCookieExpired) {
+                mainHandler.post(() -> {
+                    if (isCookieExpired) {
+                        dailyWelfareCheckResult = "Cookie失效: " + error;
+                        appendLog("每日福利检测失败: Cookie失效");
+                    } else {
+                        dailyWelfareCheckResult = "检测失败: " + error;
+                        appendLog("每日福利检测失败: " + error);
+                    }
+                    // 即使检测失败也允许复制（可能实际可用）
+                    updateStatus("读取成功！点「复制全部」");
+                    updateButtons(true);
+                    Toast.makeText(MainActivity.this, "读取完成!", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        // 执行绑定检测
+        BindingChecker.checkBindingStatus(this, cookieData);
     }
 
     private void updateStatus(String status) {
