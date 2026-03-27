@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.tidao.wuxia.app.cookie.CookieExtractor;
@@ -122,21 +123,19 @@ public class AutomationReceiver extends BroadcastReceiver {
             if (listener.getCookieData() != null) {
                 CookieExtractor.CookieData cookie = listener.getCookieData();
                 JSONObject cookieJson = new JSONObject();
-                cookieJson.put("hasAccessToken", !cookie.accessToken.isEmpty());
-                cookieJson.put("hasOpenid", !cookie.openid.isEmpty());
-                cookieJson.put("hasUin", !cookie.uin.isEmpty());
+                cookieJson.put("hasAccessToken", !TextUtils.isEmpty(cookie.accessToken));
+                cookieJson.put("hasOpenid", !TextUtils.isEmpty(cookie.openid));
+                cookieJson.put("hasUin", !TextUtils.isEmpty(cookie.uin));
                 cookieJson.put("isComplete", cookie.isComplete());
-                cookieJson.put("accessTokenPreview", cookie.accessToken.length() > 10 ?
-                        cookie.accessToken.substring(0, 10) + "..." : cookie.accessToken);
                 result.put("cookie", cookieJson);
             }
 
             if (listener.getRoleInfo() != null) {
                 GameDatabaseReader.RoleInfo role = listener.getRoleInfo();
                 JSONObject roleJson = new JSONObject();
-                roleJson.put("hasPlayername", !role.playername.isEmpty());
-                roleJson.put("hasRoleid", !role.roleid.isEmpty());
-                roleJson.put("hasArea", !role.area.isEmpty());
+                roleJson.put("hasPlayername", !TextUtils.isEmpty(role.playername));
+                roleJson.put("hasRoleid", !TextUtils.isEmpty(role.roleid));
+                roleJson.put("hasArea", !TextUtils.isEmpty(role.area));
                 roleJson.put("playername", role.playername);
                 roleJson.put("roleid", role.roleid);
                 roleJson.put("area", role.area);
