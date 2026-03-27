@@ -1,0 +1,32 @@
+# Build outputs
+build/
+app/build/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+
+# Keystore
+*.keystore
+*.jks
+
+# Test artifacts
+apks/*.apk
+apks/*.sqlite
+apks/*.bin
+cert/*.0
+cert/*.b64
+cert/*.der
+cert/*.key
+cert/*.pem
+
+# Frida
+frida-server
+
+# OS
+.DS_Store
+Thumbs.db
