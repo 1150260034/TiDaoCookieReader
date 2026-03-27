@@ -44,10 +44,11 @@ public class GameDatabaseReader {
         public String roleid = "";
         public String roleLevel = "";
         public String roleJob = "";
+        public String serverName = "";
 
         @Override
         public String toString() {
-            return playername + " (" + roleJob + ", Lv." + roleLevel + ")";
+            return playername + " [" + areaName + "-" + serverName + "] (" + roleJob + ", Lv." + roleLevel + ")";
         }
     }
 
@@ -391,6 +392,7 @@ public class GameDatabaseReader {
                         role.roleid = fields[3];
                         role.playername = fields[4];
                         role.roleJob = fields[5];
+                        role.serverName = fields[6];
                         role.roleLevel = fields[8];
                         result.allRoles.add(role);
 

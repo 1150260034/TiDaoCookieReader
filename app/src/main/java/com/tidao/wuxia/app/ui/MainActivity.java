@@ -292,6 +292,7 @@ public class MainActivity extends Activity {
                             roleInfo.roleid = role.roleid;
                             roleInfo.roleLevel = role.roleLevel;
                             roleInfo.roleJob = role.roleJob;
+                            roleInfo.serverName = role.serverName;
                         }
                         onRoleInfoSelected();
                     }
@@ -318,7 +319,8 @@ public class MainActivity extends Activity {
 
         for (int i = 0; i < roles.size(); i++) {
             GameDatabaseReader.SingleRole role = roles.get(i);
-            items[i] = role.playername + " (" + role.roleJob + ", Lv." + role.roleLevel + ")";
+            String serverInfo = role.areaName.isEmpty() ? role.area : role.areaName;
+            items[i] = role.playername + " [" + serverInfo + "-" + role.serverName + "] (" + role.roleJob + ", Lv." + role.roleLevel + ")";
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -339,6 +341,7 @@ public class MainActivity extends Activity {
             roleInfo.roleJob = selectedRole.roleJob;
             roleInfo.area = selectedRole.area;
             roleInfo.areaName = selectedRole.areaName;
+            roleInfo.serverName = selectedRole.serverName;
 
             onRoleInfoSelected();
         });
