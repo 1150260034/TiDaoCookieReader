@@ -24,6 +24,18 @@
             </intent-filter>
         </activity>
 
+        <!-- 自动化测试广播接收器 -->
+        <receiver
+            android:name=".AutomationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.tidao.wuxia.app.action.READ_COOKIE" />
+                <action android:name="com.tidao.wuxia.app.action.COPY_ALL" />
+                <action android:name="com.tidao.wuxia.app.action.CHECK_WELFARE" />
+                <action android:name="com.tidao.wuxia.app.action.GET_STATUS" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

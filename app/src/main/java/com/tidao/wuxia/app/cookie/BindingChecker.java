@@ -76,7 +76,7 @@ public class BindingChecker {
 
         Log.d(TAG, "请求URL: " + urlStr);
 
-        // 构建POST参数
+        // 构建POST参数（参考 Python daily_welfare_signer.py 的 974294 调用）
         Map<String, String> params = new HashMap<>();
         params.put("appid", cookieData.appid.isEmpty() ? "1104787345" : cookieData.appid);
         params.put("sServiceType", "wuxia");
@@ -88,14 +88,20 @@ public class BindingChecker {
         params.put("eas_url", "http://wuxia.qq.com/lbact/a20230821lbapqam/flttl.html");
         params.put("eas_refer", "http://noreferrer/?reqid=" + timestamp + "&version=27");
         params.put("sServiceDepartment", "group_9");
-        params.put("openid", cookieData.openid);
-        params.put("openkey", cookieData.accessToken);
-        // 添加角色信息参数（解决 iRet=101 问题）
+        // Python 版本的额外字段（与 role_params 对应）
         params.put("userId", cookieData.userId != null ? cookieData.userId : "");
+        params.put("gameId", "");
+        params.put("sArea", "");
+        params.put("iSex", "");
+        params.put("sRoleId", "");
+        params.put("iGender", "");
+        params.put("objCustomMsg", "");
+        params.put("areaname", "");
         params.put("roleid", cookieData.roleid != null ? cookieData.roleid : "");
         params.put("rolelevel", cookieData.rolelevel != null ? cookieData.rolelevel : "");
         params.put("rolename", cookieData.rolename != null ? cookieData.rolename : "");
         params.put("areaid", cookieData.areaid != null ? cookieData.areaid : "");
+        // 注意：openid/openkey 通过 Cookie header 发送，不在 POST body 中（与 Python 一致）
         params.put("ext", "{\"height\":2668,\"dpr\":1.1,\"client\":\"Android\",\"osVersion\":\"13\",\"channel\":\"tencent\",\"model\":\"Pixel 6 Pro\",\"deviceId\":\"\",\"appVersion\":\"1.3.38.463\",\"networkType\":\"wifi\",\"isTransformedApk\":\"false\",\"installSource\":\"com.tencent.gamehelper.wuxia\",\"batchType\":\"old\"}");
 
         // 发送请求

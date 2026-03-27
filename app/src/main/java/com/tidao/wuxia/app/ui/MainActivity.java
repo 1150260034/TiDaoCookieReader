@@ -2,19 +2,23 @@ package com.tidao.wuxia.app.ui;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.tidao.wuxia.app.AutomationReceiver;
 import com.tidao.wuxia.app.R;
 import com.tidao.wuxia.app.cookie.BindingChecker;
 import com.tidao.wuxia.app.cookie.CookieExtractor;
@@ -27,7 +31,12 @@ import com.tidao.wuxia.app.utils.RootChecker;
  *
  * 功能：读取天刀助手的Cookie信息
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements AutomationReceiver.AutomationListener {
+
+    // 注意: TAG 已经在父类定义
+
+    // 广播接收器
+    private BroadcastReceiver automationReceiver;
     private static final String TAG = "MainActivity";
 
     // 天刀助手包名
@@ -67,6 +76,80 @@ public class MainActivity extends Activity {
         initViews();
         setupListeners();
         checkRootStatus();
+        registerAutomationReceiver();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterAutomationReceiver();
+    }
+
+    /**
+     * 注册自动化广播接收器
+     */
+    private void registerAutomationReceiver() {
+        automationReceiver = new AutomationReceiver();
+        IntentFilter filter = AutomationReceiver.getIntentFilter();
+        registerReceiver(automationReceiver, filter);
+        AutomationReceiver.setListener(this);
+        Log.d(TAG, "AutomationReceiver registered");
+    }
+
+    /**
+     * 注销自动化广播接收器
+     */
+    private void unregisterAutomationReceiver() {
+        if (automationReceiver != null) {
+            unregisterReceiver(automationReceiver);
+            automationReceiver = null;
+            Log.d(TAG, "AutomationReceiver unregistered");
+        }
+    }
+
+    // ========== AutomationListener 实现 ==========
+
+    @Override
+    public Context getContext() {
+        return this;
+    }
+
+    @Override
+    public CookieExtractor.CookieData getCookieData() {
+        return cookieData;
+    }
+
+    @Override
+    public GameDatabaseReader.RoleInfo getRoleInfo() {
+        return roleInfo;
+    }
+
+    @Override
+    public String getDailyWelfareCheckResult() {
+        return dailyWelfareCheckResult;
+    }
+
+    @Override
+    public void performReadCookie() {
+        readWebViewCookie();
+    }
+
+    @Override
+    public void performCopyAll() {
+        if (cookieData.accessToken.isEmpty() && cookieData.openid.isEmpty()) {
+            Log.i("TidaoResult", "[ERROR] No cookie data available");
+            return;
+        }
+        copyAll();
+    }
+
+    @Override
+    public void performCheckWelfare() {
+        if (cookieData.openid.isEmpty()) {
+            Log.i("TidaoResult", "[ERROR] No cookie data, please read cookie first");
+            return;
+        }
+        checkDailyWelfareStatus();
     }
 
     private void initViews() {
