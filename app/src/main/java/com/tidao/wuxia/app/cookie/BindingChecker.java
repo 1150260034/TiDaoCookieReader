@@ -90,6 +90,12 @@ public class BindingChecker {
         params.put("sServiceDepartment", "group_9");
         params.put("openid", cookieData.openid);
         params.put("openkey", cookieData.accessToken);
+        // 添加角色信息参数（解决 iRet=101 问题）
+        params.put("userId", cookieData.userId != null ? cookieData.userId : "");
+        params.put("roleid", cookieData.roleid != null ? cookieData.roleid : "");
+        params.put("rolelevel", cookieData.rolelevel != null ? cookieData.rolelevel : "");
+        params.put("rolename", cookieData.rolename != null ? cookieData.rolename : "");
+        params.put("areaid", cookieData.areaid != null ? cookieData.areaid : "");
         params.put("ext", "{\"height\":2668,\"dpr\":1.1,\"client\":\"Android\",\"osVersion\":\"13\",\"channel\":\"tencent\",\"model\":\"Pixel 6 Pro\",\"deviceId\":\"\",\"appVersion\":\"1.3.38.463\",\"networkType\":\"wifi\",\"isTransformedApk\":\"false\",\"installSource\":\"com.tencent.gamehelper.wuxia\",\"batchType\":\"old\"}");
 
         // 发送请求

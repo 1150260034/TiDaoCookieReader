@@ -38,6 +38,12 @@ public class CookieExtractor {
         public String acctype = "";
         public String eas_sid = "";
         public String appOpenId = "";
+        // 角色信息字段（从游戏数据库读取）
+        public String userId = "";
+        public String roleid = "";
+        public String rolelevel = "";
+        public String rolename = "";
+        public String areaid = "";
         public boolean isComplete() {
             return !accessToken.isEmpty()
                     && !openid.isEmpty()
@@ -54,6 +60,11 @@ public class CookieExtractor {
                     ", appid='" + appid + '\'' +
                     ", eas_sid='" + eas_sid + '\'' +
                     ", appOpenId='" + appOpenId + '\'' +
+                    ", userId='" + userId + '\'' +
+                    ", roleid='" + roleid + '\'' +
+                    ", rolelevel='" + rolelevel + '\'' +
+                    ", rolename='" + rolename + '\'' +
+                    ", areaid='" + areaid + '\'' +
                     '}';
         }
 

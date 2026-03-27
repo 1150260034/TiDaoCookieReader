@@ -370,6 +370,13 @@ public class MainActivity extends Activity {
             appendLog("roleJob: " + roleInfo.roleJob);
         }
 
+        // 将角色信息同步到 cookieData（解决 BindingChecker iRet=101 问题）
+        cookieData.roleid = roleInfo.roleid;
+        cookieData.rolename = roleInfo.playername;
+        cookieData.rolelevel = roleInfo.roleLevel;
+        cookieData.areaid = roleInfo.area;
+        cookieData.userId = roleInfo.uin;
+
         updateStatus("读取成功！点「复制全部」");
         updateButtons(true);
         Toast.makeText(this, "读取完成!", Toast.LENGTH_SHORT).show();
