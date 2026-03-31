@@ -10,6 +10,9 @@ on:
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
 
 permissions:
   contents: write
@@ -19,7 +22,7 @@ env:
 
 jobs:
   publish:
-    name: Publish Release
+    name: Publish Prerelease
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -43,7 +46,7 @@ jobs:
       - name: Build Debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Publish versioned release
+      - name: Publish versioned prerelease
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
