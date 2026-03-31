@@ -52,7 +52,7 @@ jobs:
           VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           PREVIEW_TAG="v${VERSION_NAME}-preview"
-          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
+          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}-preview.apk"
           cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
           # 仅删除相同版本号的旧预览版，不影响其他版本的历史记录
           if gh release view "${PREVIEW_TAG}" > /dev/null 2>&1; then
