@@ -45,24 +45,32 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Publish versioned preview release
+      - name: Publish versioned release
         if: github.event_name == 'push'
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          PREVIEW_TAG="v${VERSION_NAME}-preview"
-          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+          RELEASE_TAG="v${VERSION_NAME}-${SHORT_SHA}"
+          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}-${SHORT_SHA}.apk"
+          RELEASE_NOTES="$(printf '## 自动构建\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")"
+
           cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
-          # 仅删除相同版本号的旧预览版，不影响其他版本的历史记录
-          if gh release view "${PREVIEW_TAG}" > /dev/null 2>&1; then
-            echo "删除同版本号旧预览版: ${PREVIEW_TAG}"
-            gh release delete "${PREVIEW_TAG}" --cleanup-tag --yes
+
+          if gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" \
+              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
+              --notes "${RELEASE_NOTES}" \
+              --prerelease
+            gh release upload "${RELEASE_TAG}" \
+              "app/build/outputs/apk/debug/${APK_NAME}" \
+              --clobber
+          else
+            gh release create "${RELEASE_TAG}" \
+              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
+              --notes "${RELEASE_NOTES}" \
+              --prerelease \
+              "app/build/outputs/apk/debug/${APK_NAME}"
           fi
-          gh release create "${PREVIEW_TAG}" \
-            --title "预览版 v${VERSION_NAME}" \
-            --notes "$(printf '## 自动构建预览版\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s\n\n> 此为开发预览版，正式版请查看 [Releases](../../releases) 中无 `-preview` 后缀的版本。' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")" \
-            --prerelease \
-            "app/build/outputs/apk/debug/${APK_NAME}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
