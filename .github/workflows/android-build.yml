@@ -36,10 +36,22 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: |
+          for attempt in 1 2 3; do
+            echo "Build attempt $attempt..."
+            ./gradlew --no-daemon assembleDebug && break
+            [ $attempt -lt 3 ] && echo "Attempt $attempt failed, retrying in 30s..." && sleep 30
+            [ $attempt -eq 3 ] && exit 1
+          done
 
       - name: Build Release APK (unsigned)
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          for attempt in 1 2 3; do
+            echo "Build attempt $attempt..."
+            ./gradlew --no-daemon assembleRelease && break
+            [ $attempt -lt 3 ] && echo "Attempt $attempt failed, retrying in 30s..." && sleep 30
+            [ $attempt -eq 3 ] && exit 1
+          done
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
