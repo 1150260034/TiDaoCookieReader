@@ -45,21 +45,19 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Publish rolling latest release
+      - name: Publish versioned release
         if: github.event_name == 'push'
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
-          cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
-          if gh release view latest > /dev/null 2>&1; then
-            echo "Deleting existing latest release..."
-            gh release delete latest --cleanup-tag --yes
-          else
-            echo "No existing latest release found, skipping deletion."
-          fi
-          gh release create latest \
-            --title "Latest Build (v${VERSION_NAME})" \
-            --notes "Auto-built from commit ${{ github.sha }} on branch ${{ github.ref_name }}" \
+          VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          RELEASE_TAG="v${VERSION_NAME}-${SHORT_SHA}"
+          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
+          cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
+          gh release create "${RELEASE_TAG}" \
+            --title "Build v${VERSION_NAME}" \
+            --notes "$(printf '## 自动构建\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")" \
             --prerelease \
-            "app/build/outputs/apk/debug/TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
+            "app/build/outputs/apk/debug/${APK_NAME}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
