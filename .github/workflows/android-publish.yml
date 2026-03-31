@@ -37,7 +37,7 @@ jobs:
         uses: ./.github/actions/android-build
         with:
           variant: Debug
-          cache-read-only: 'false'
+          cache-read-only: false
 
       - name: Publish versioned prerelease
         run: |
