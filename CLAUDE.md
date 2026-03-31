@@ -64,8 +64,7 @@ MainActivity 整合 → copyAll() → 剪贴板
 
 ## CI/CD
 
-- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK（始终触发，用于保持 CI 缓存新鲜）
-- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties` 变更时触发，发布 GitHub prerelease，tag 为 `v{VERSION_NAME}-{SHA12}`，幂等
+- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK；push 时自动创建 GitHub prerelease，tag 为 `v{VERSION_NAME}-{SHA12}`，title 为 `Build v{VERSION_NAME} ({SHA})`，幂等（已存在则 edit+upload --clobber）
 - **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release
 
 ## 分支规范
