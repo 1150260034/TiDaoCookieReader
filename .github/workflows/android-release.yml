@@ -36,14 +36,28 @@ jobs:
       - name: Build Release APK
         run: gradle --no-daemon assembleRelease
 
-      - name: Rename APK with tag
+      - name: Rename APK with version info
+        id: apk_info
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
+          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
           APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
           cp "$APK_PATH" "app/build/outputs/apk/release/TiDaoCookieReader-${TAG_NAME}.apk"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/TiDaoCookieReader-*.apk
           generate_release_notes: true
+          body: |
+            ## 版本信息
+
+            - **版本号**: v${{ steps.apk_info.outputs.version_name }} (build ${{ steps.apk_info.outputs.version_code }})
+
+            ## 更新内容
+
+            <!-- 请在发布前手动编辑此说明，或通过 GitHub Release 页面填写 -->
+            _下方自动生成本次 Release 包含的提交记录。_
