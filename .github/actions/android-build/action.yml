@@ -36,4 +36,6 @@ runs:
 
     - name: Build APK
       shell: bash
-      run: ./gradlew --no-daemon assemble${{ inputs.variant }}
+      run: |
+        chmod +x gradlew
+        ./gradlew --no-daemon assemble${{ inputs.variant }}
