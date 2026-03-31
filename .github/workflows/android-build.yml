@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Build Debug and Release APK
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -38,9 +38,6 @@ jobs:
       - name: Build Debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Build Release APK (unsigned)
-        run: gradle --no-daemon assembleRelease
-
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -48,17 +45,11 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
       - name: Publish rolling latest release
         if: github.event_name == 'push'
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
           if gh release view latest > /dev/null 2>&1; then
             echo "Deleting existing latest release..."
             gh release delete latest --cleanup-tag --yes
@@ -69,7 +60,6 @@ jobs:
             --title "Latest Build (v${VERSION_NAME})" \
             --notes "Auto-built from commit ${{ github.sha }} on branch ${{ github.ref_name }}" \
             --prerelease \
-            app/build/outputs/apk/debug/*.apk \
-            app/build/outputs/apk/release/*.apk
+            "app/build/outputs/apk/debug/TiDaoCookieReader-debug-v${VERSION_NAME}.apk"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
