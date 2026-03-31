@@ -1,0 +1,41 @@
+name: Build Android APK
+description: 设置 JDK、Gradle 并构建 Android APK
+
+inputs:
+  variant:
+    description: 构建变体，Debug 或 Release
+    required: false
+    default: Debug
+  java-version:
+    description: Java 版本
+    required: false
+    default: '17'
+  gradle-version:
+    description: Gradle 版本，默认使用项目 wrapper 版本
+    required: false
+    default: 'wrapper'
+  cache-read-only:
+    description: Gradle 缓存是否为只读模式
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: ${{ inputs.gradle-version }}
+        cache-read-only: ${{ inputs.cache-read-only }}
+
+    - name: Build APK
+      shell: bash
+      run: |
+        chmod +x gradlew
+        ./gradlew --no-daemon assemble${{ inputs.variant }}

@@ -9,9 +9,6 @@ on:
 permissions:
   contents: write
 
-env:
-  JAVA_VERSION: "17"
-
 jobs:
   release:
     name: Build and Publish Release APK
@@ -21,20 +18,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
       - name: Build Release APK
-        run: gradle --no-daemon assembleRelease
+        uses: ./.github/actions/android-build
+        with:
+          variant: Release
+          cache-read-only: false
 
       - name: Rename APK with version info
         id: apk_info
