@@ -1,0 +1,80 @@
+name: Android Publish
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: "17"
+
+jobs:
+  publish:
+    name: Publish Prerelease
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          cache-read-only: false
+
+      - name: Build Debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Publish versioned prerelease
+        run: |
+          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+          RELEASE_TAG="v${VERSION_NAME}-${SHORT_SHA}"
+          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}-${SHORT_SHA}.apk"
+          RELEASE_NOTES="$(printf '## 自动构建\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")"
+
+          cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
+
+          if gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" \
+              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
+              --notes "${RELEASE_NOTES}" \
+              --prerelease
+            gh release upload "${RELEASE_TAG}" \
+              "app/build/outputs/apk/debug/${APK_NAME}" \
+              --clobber
+          else
+            gh release create "${RELEASE_TAG}" \
+              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
+              --notes "${RELEASE_NOTES}" \
+              --prerelease \
+              "app/build/outputs/apk/debug/${APK_NAME}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
