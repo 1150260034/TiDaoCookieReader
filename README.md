@@ -1,86 +1,84 @@
 # 天刀助手 Cookie 读取器 (TiDaoCookieReader)
 
-一个简单的 Android App，用于自动提取天刀助手的登录 Cookie。
+从已登录天刀助手 (com.tencent.gamehelper.wuxia) 的 WebView 中提取登录 Cookie 和角色信息，无需抓包。
 
 ## 功能
 
-- 一键启动抓包服务
-- 自动检测并提取 `access_token`、`openid`、`uin`、`gtk` 等 Cookie 信息
-- 一键复制到剪贴板
-- 自动打开天刀助手 App
+- 读取 WebView Cookie 数据库（通过 Root 权限）
+- 提取 `access_token`、`openid`、`uin`、`appid` 等登录凭证
+- 从游戏数据库读取角色信息（支持多角色账号选择）
+- 检测每日福利绑定状态（AMS 登录验证接口）
+- 一键复制全部信息到剪贴板
+- 支持 ADB 广播触发自动化操作
 
 ## 快速开始
 
-### 1. 安装 Android Studio
+### 1. 安装依赖
 
-下载并安装 [Android Studio](https://developer.android.com/studio) (推荐最新版)
+- [Android Studio](https://developer.android.com/studio)
+- MuMu 模拟器（需开启 Root 权限）
 
-### 2. 导入项目
+### 2. 构建
 
-1. 打开 Android Studio
-2. 选择 `File` → `Open`
-3. 选择项目文件夹 `TiDaoCookieReader`
-4. 等待 Gradle 同步完成
-
-### 3. 配置模拟器
-
-1. 确保 Mumu 模拟器已安装并运行
-2. 在 Android Studio 中选择你的模拟器作为运行目标
-3. 点击 `Run` 按钮 (绿色三角形)
-
-### 4. 使用 App（朋友的操作）
-
+```bash
+./gradlew assembleDebug      # 调试 APK
+./gradlew assembleRelease    # 发布 APK
 ```
-1. 打开"天刀助手抓包" App
-2. 点「开始抓包」
-3. 点「打开天刀助手」
-4. 在天刀助手里登录账号
-5. 回来点「复制全部」
-6. 发给你
-```
+
+### 3. 安装运行
+
+1. 安装 `app-debug.apk` 到已 Root 的模拟器
+2. 安装天刀助手并扫码登录
+3. 在天刀助手中点击「周周载愿」
+4. 打开本 App → 点「读取Cookie」→ 点「复制全部」
 
 ## 项目结构
 
-```
+```text
 TiDaoCookieReader/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/tidao/wuxia/app/
-│   │   │   ├── vpn/
-│   │   │   │   ├── LocalVpnService.java    # VPN 抓包（可选）
-│   │   │   │   └── LocalProxyServer.java    # HTTP 代理服务器
-│   │   │   ├── cookie/
-│   │   │   │   └── CookieExtractor.java     # Cookie 提取
-│   │   │   └── ui/
-│   │   │       └── MainActivity.java        # 主界面
-│   │   ├── res/
-│   │   │   ├── layout/activity_main.xml     # 界面布局
-│   │   │   └── values/                       # 资源文件
-│   │   └── AndroidManifest.xml
-│   └── build.gradle
-├── build.gradle
-├── settings.gradle
-├── gradle.properties
-└── README.md
+├── app/src/main/java/com/tidao/wuxia/app/
+│   ├── ui/MainActivity.java          # 主界面
+│   ├── AutomationReceiver.java       # ADB 广播接收器（自动化测试用）
+│   ├── cookie/
+│   │   ├── WebViewCookieReader.java  # 通过 su 读取天刀助手 WebView Cookie 数据库
+│   │   ├── GameDatabaseReader.java   # 通过 su 读取游戏数据库 Role 表
+│   │   ├── BindingChecker.java       # 调用 AMS API 检测每日福利绑定状态
+│   │   └── CookieExtractor.java      # HTTP 流量解析（本地代理模式，已不使用）
+│   └── utils/RootChecker.java        # Root 权限检测
+├── app/src/main/res/layout/activity_main.xml
+├── build.gradle                       # AGP 8.5.0
+└── settings.gradle                   # 使用阿里云镜像加速 Gradle 依赖
 ```
 
-## 技术说明
+## 技术参数
 
-- **最低 Android 版本**: Android 8.0 (API 26)
-- **目标 Android 版本**: Android 14 (API 34)
-- **抓包方式**: 本地 HTTP 代理服务器
+- **最低 Android 版本**: API 26 (Android 8.0)
+- **目标 Android 版本**: API 34 (Android 14)
+- **包名**: `com.tidao.wuxia.app`
+- **天刀助手包名**: `com.tencent.gamehelper.wuxia`
 
 ## 工作原理
 
-1. App 启动本地 HTTP 代理服务器（端口 8080）
-2. 用户配置 WiFi 代理指向本机
-3. 天刀助手的 HTTP/HTTPS 请求经过代理
-4. App 解析请求，提取 Cookie 参数
+1. 通过 `su` 命令将天刀助手私有目录中的 WebView Cookie 数据库复制到临时位置
+2. 直接用 Java SQLite 读取数据库，提取目标域名的 Cookie
+3. 同样方式读取游戏数据库 `databases/*.db` 中的 `Role` 表获取角色信息
+4. 调用 `https://comm.ams.game.qq.com/ams/ame/amesvr` (FlowID 974294) 检测绑定状态
 
-## 已知问题
+## ADB 自动化
 
-- 如果天刀助手使用 SSL Pinning，HTTPS 请求可能无法解析
-- 这种情况需要安装证书或使用其他抓包工具
+App 暴露了四个广播 Action 用于自动化测试：
+
+```bash
+adb shell am broadcast -a com.tidao.wuxia.app.action.READ_COOKIE
+adb shell am broadcast -a com.tidao.wuxia.app.action.COPY_ALL
+adb shell am broadcast -a com.tidao.wuxia.app.action.CHECK_WELFARE
+adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
+```
+
+## CI/CD
+
+- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK；push 时自动更新 GitHub "latest" prerelease
+- **android-release.yml** — 打 tag (`v*`) 时构建发布 APK 并创建 GitHub Release
 
 ## License
 
