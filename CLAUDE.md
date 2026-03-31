@@ -35,7 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 数据流向
 
-```
+```text
 用户操作流程:
 天刀助手扫码登录 → 点击「周周载愿」
         ↓
