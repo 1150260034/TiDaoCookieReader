@@ -22,7 +22,7 @@ jobs:
         uses: ./.github/actions/android-build
         with:
           variant: Release
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: false
 
       - name: Rename APK with version info
         id: apk_info
