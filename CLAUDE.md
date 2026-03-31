@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件用于为 Claude Code（claude.ai/code）在处理本仓库代码时提供指导说明。
 
 ## 项目概述
 
@@ -11,9 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 构建命令
 
 ```bash
+# 本地开发
 ./gradlew assembleDebug      # 调试 APK
 ./gradlew assembleRelease    # 发布 APK
-./gradlew --no-daemon assembleDebug  # CI 环境
+
+# CI 环境（android-build.yml 使用）
+gradle --no-daemon assembleDebug
 ```
 
 - AGP 版本: 8.5.0，Gradle: 8.7
@@ -26,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 核心组件
 
 - **MainActivity** — UI 交互、业务编排、多角色选择对话框
-- **AutomationReceiver** — ADB 广播接收器，支持 `READ_COOKIE`、`COPY_ALL`、`CHECK_WELFARE`、`GET_STATUS` 四个 Intent Action，结果输出到 Logcat 和 `cacheDir/result.txt`
+- **AutomationReceiver** — ADB 广播接收器，支持 `READ_COOKIE`、`COPY_ALL`、`CHECK_WELFARE`、`GET_STATUS` 四个 Intent Action（后缀名，完整值为 `com.tidao.wuxia.app.action.<ACTION>`），结果输出到 Logcat 和 `cacheDir/result.txt`
 - **WebViewCookieReader** — 通过 `su` 复制天刀助手 WebView Cookie 数据库 (`/data/data/com.tencent.gamehelper.wuxia/app_webview/Default/Cookies`) 到临时文件后用 Java SQLite 读取。关键路径: `/data/local/tmp/tidao_cookies.db`
 - **GameDatabaseReader** — 遍历天刀助手 `databases/*.db`，用 sqlite3 命令查询 `Role WHERE f_uin=?` 定位正确数据库，读取多角色信息。临时路径: `/data/local/tmp/tidao_game.db`
 - **BindingChecker** — 调用 AMS 登录验证接口 (FlowID 974294) 检查账号是否已绑定游戏角色。iRet=101 表示 Cookie 失效

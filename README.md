@@ -34,7 +34,7 @@
 
 ## 项目结构
 
-```
+```text
 TiDaoCookieReader/
 ├── app/src/main/java/com/tidao/wuxia/app/
 │   ├── ui/MainActivity.java          # 主界面
@@ -77,7 +77,7 @@ adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
 
 ## CI/CD
 
-- **android-build.yml** — push 到 main/master 时构建调试 APK，并自动更新 GitHub "latest" prerelease
+- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK；push 时自动更新 GitHub "latest" prerelease
 - **android-release.yml** — 打 tag (`v*`) 时构建发布 APK 并创建 GitHub Release
 
 ## License
