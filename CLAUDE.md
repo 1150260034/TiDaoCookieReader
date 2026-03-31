@@ -67,6 +67,10 @@ MainActivity 整合 → copyAll() → 剪贴板
 - **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK；push 时自动创建 GitHub prerelease，tag 为 `v{VERSION_NAME}-{SHA12}`，title 为 `Build v{VERSION_NAME} ({SHA})`，幂等（已存在则 edit+upload --clobber）
 - **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release
 
+## 分支规范
+
+新功能开发须在独立分支上进行，禁止直接在 main 分支编写代码后推送。
+
 ## 响应偏好
 
 请始终使用简体中文回答本仓库相关的问题。技术名词优先使用中文，必要时在括号中补充英文原词。代码注释、提交说明默认使用中文。
