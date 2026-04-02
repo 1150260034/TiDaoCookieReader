@@ -32,6 +32,7 @@ public class UpdateChecker {
     private static final int TIMEOUT_MS = 5000;
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public interface UpdateCallback {
         /**
@@ -74,6 +75,9 @@ public class UpdateChecker {
                 int responseCode = conn.getResponseCode();
                 if (responseCode != 200) {
                     Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
+                    if (noUpdateCallback != null) {
+                        mainHandler.post(noUpdateCallback);
+                    }
                     return;
                 }
 
@@ -103,7 +107,12 @@ public class UpdateChecker {
                 String latestVersion = extractVersionFromName(releaseName);
                 if (latestVersion == null) {
                     // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
-                    if (tagName.isEmpty()) return;
+                    if (tagName.isEmpty()) {
+                        if (noUpdateCallback != null) {
+                            mainHandler.post(noUpdateCallback);
+                        }
+                        return;
+                    }
                     latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                 }
 
@@ -111,12 +120,12 @@ public class UpdateChecker {
                     Log.d(TAG, "发现新版本: " + latestVersion);
                     final String finalApkUrl = apkDownloadUrl;
                     final String finalVersion = latestVersion;
-                    new Handler(Looper.getMainLooper()).post(() ->
+                    mainHandler.post(() ->
                             callback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
                     Log.d(TAG, "当前已是最新版本");
                     if (noUpdateCallback != null) {
-                        new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                        mainHandler.post(noUpdateCallback);
                     }
                 }
 
@@ -124,7 +133,7 @@ public class UpdateChecker {
                 // 网络不通或解析失败，静默忽略，不影响正常使用
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
                 if (noUpdateCallback != null) {
-                    new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                    mainHandler.post(noUpdateCallback);
                 }
             } finally {
                 if (conn != null) conn.disconnect();

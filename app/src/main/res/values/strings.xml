@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">天刀Cookie助手</string>
+    <string name="check_update">检查更新</string>
+    <string name="checking_update">检查中...</string>
+    <string name="latest_version">当前已是最新版本</string>
+    <string name="check_update_failed">检查更新失败，请稍后重试</string>
 </resources>

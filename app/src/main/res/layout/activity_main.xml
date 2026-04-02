@@ -97,7 +97,7 @@
             android:id="@+id/btn_check_update"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="检查更新"
+            android:text="@string/check_update"
             android:textColor="#cccccc"
             android:backgroundTint="#334455"
             android:layout_marginBottom="16dp" />
