@@ -1,5 +1,7 @@
 package com.tidao.wuxia.app.utils;
 
+import android.app.Activity;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -16,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 检查 GitHub Releases 是否有新版本
@@ -32,6 +35,11 @@ public class UpdateChecker {
     private static final int TIMEOUT_MS = 5000;
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private static final AtomicLong requestIdCounter = new AtomicLong(0);
+
+    private static volatile long currentRequestId = -1;
+    private static volatile Context activeContext = null;
 
     public interface UpdateCallback {
         /**
@@ -49,6 +57,43 @@ public class UpdateChecker {
      * @param callback       发现新版本时的回调（在主线程中调用）
      */
     public static void checkForUpdates(String currentVersion, UpdateCallback callback) {
+        checkForUpdates(currentVersion, callback, null);
+    }
+
+    /**
+     * 异步检查是否有新版本，支持无更新/失败时的回调（用于手动触发时恢复 UI 状态）
+     *
+     * @param currentVersion    当前版本号，如 "1.2.1"
+     * @param callback          发现新版本时的回调（在主线程中调用）
+     * @param noUpdateCallback  无新版本或检测失败时的回调（在主线程中调用），为 null 则静默
+     */
+    public static void checkForUpdates(String currentVersion, UpdateCallback callback, Runnable noUpdateCallback) {
+        checkForUpdates(null, currentVersion, callback, noUpdateCallback);
+    }
+
+    /**
+     * 异步检查是否有新版本，支持生命周期管理、无更新/失败时的回调
+     *
+     * @param context           上下文对象（用于生命周期检查），为 null 则不做生命周期检查
+     * @param currentVersion    当前版本号，如 "1.2.1"
+     * @param callback          发现新版本时的回调（在主线程中调用）
+     * @param noUpdateCallback  无新版本或检测失败时的回调（在主线程中调用），为 null 则静默
+     */
+    public static void checkForUpdates(Context context, String currentVersion, UpdateCallback callback, Runnable noUpdateCallback) {
+        // 防御性处理：确保 callback 不为 null，避免异步调用时出现 NPE
+        final UpdateCallback safeCallback = (callback != null) ? callback :
+                (latestVersion, releasePageUrl, apkDownloadUrl) -> {
+                    // no-op: 静默忽略
+                };
+        final Runnable safeNoUpdateCallback = (noUpdateCallback != null) ? noUpdateCallback : () -> {
+            // no-op: 静默忽略
+        };
+
+        // 生成新的请求 ID，用于取消旧请求
+        final long requestId = requestIdCounter.incrementAndGet();
+        currentRequestId = requestId;
+        activeContext = context;
+
         executor.execute(() -> {
             HttpURLConnection conn = null;
             try {
@@ -63,6 +108,7 @@ public class UpdateChecker {
                 int responseCode = conn.getResponseCode();
                 if (responseCode != 200) {
                     Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
+                    postCallback(requestId, safeNoUpdateCallback);
                     return;
                 }
 
@@ -92,7 +138,10 @@ public class UpdateChecker {
                 String latestVersion = extractVersionFromName(releaseName);
                 if (latestVersion == null) {
                     // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
-                    if (tagName.isEmpty()) return;
+                    if (tagName.isEmpty()) {
+                        postCallback(requestId, safeNoUpdateCallback);
+                        return;
+                    }
                     latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                 }
 
@@ -100,18 +149,49 @@ public class UpdateChecker {
                     Log.d(TAG, "发现新版本: " + latestVersion);
                     final String finalApkUrl = apkDownloadUrl;
                     final String finalVersion = latestVersion;
-                    new Handler(Looper.getMainLooper()).post(() ->
-                            callback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
+                    postCallback(requestId, () ->
+                            safeCallback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
                     Log.d(TAG, "当前已是最新版本");
+                    postCallback(requestId, safeNoUpdateCallback);
                 }
 
             } catch (Exception e) {
                 // 网络不通或解析失败，静默忽略，不影响正常使用
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
+                postCallback(requestId, safeNoUpdateCallback);
             } finally {
                 if (conn != null) conn.disconnect();
             }
+        });
+    }
+
+    /**
+     * 发送回调到主线程前检查生命周期和请求 ID，避免 Activity 销毁时抛出异常
+     *
+     * @param requestId 请求 ID，用于取消旧请求
+     * @param callback  要执行的回调
+     */
+    private static void postCallback(long requestId, Runnable callback) {
+        mainHandler.post(() -> {
+            // 检查请求是否已被取消（新请求已发起）
+            if (requestId != currentRequestId) {
+                Log.d(TAG, "请求 ID 不匹配（已取消），跳过回调");
+                return;
+            }
+
+            // 检查 Activity 生命周期
+            Context ctx = activeContext;
+            if (ctx instanceof Activity) {
+                Activity activity = (Activity) ctx;
+                if (activity.isFinishing() || activity.isDestroyed()) {
+                    Log.d(TAG, "Activity 已销毁，跳过回调");
+                    return;
+                }
+            }
+
+            // 生命周期有效，执行回调
+            callback.run();
         });
     }
 

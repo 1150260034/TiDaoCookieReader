@@ -91,6 +91,15 @@
             android:textColor="#ffffff"
             android:backgroundTint="#0088ff"
             android:enabled="false"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_check_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/check_update"
+            android:textColor="#cccccc"
+            android:backgroundTint="#334455"
             android:layout_marginBottom="16dp" />
 
         <!-- 使用教程 -->

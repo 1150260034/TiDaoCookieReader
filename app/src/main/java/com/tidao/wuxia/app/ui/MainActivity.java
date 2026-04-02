@@ -58,6 +58,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private Button btnOpenTianDao;
     private Button btnReadCookie;
     private Button btnCopyAll;
+    private Button btnCheckUpdate;
     private TextView tvStatus;
     private TextView tvLog;
     private TextView tvVersion;
@@ -173,6 +174,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao = findViewById(R.id.btn_open_tiandao);
         btnReadCookie = findViewById(R.id.btn_read_cookie);
         btnCopyAll = findViewById(R.id.btn_copy_all);
+        btnCheckUpdate = findViewById(R.id.btn_check_update);
         tvStatus = findViewById(R.id.tv_status);
         tvLog = findViewById(R.id.tv_log);
         tvVersion = findViewById(R.id.tv_version);
@@ -218,6 +220,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao.setOnClickListener(v -> openTianDao());
         btnReadCookie.setOnClickListener(v -> readWebViewCookie());
         btnCopyAll.setOnClickListener(v -> copyAll());
+        btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
     }
 
     /**
@@ -535,14 +538,42 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     }
 
     /**
+     * 手动触发更新检查（按钮点击），有结果后恢复按钮状态并给出提示
+     */
+    private void checkForUpdatesManual() {
+        btnCheckUpdate.setEnabled(false);
+        btnCheckUpdate.setText(getString(R.string.checking_update));
+        try {
+            String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            UpdateChecker.checkForUpdates(this, currentVersion,
+                    (latestVersion, releasePageUrl, apkDownloadUrl) -> {
+                        btnCheckUpdate.setEnabled(true);
+                        btnCheckUpdate.setText(getString(R.string.check_update));
+                        showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl);
+                    },
+                    () -> {
+                        btnCheckUpdate.setEnabled(true);
+                        btnCheckUpdate.setText(getString(R.string.check_update));
+                        Toast.makeText(this, getString(R.string.latest_version), Toast.LENGTH_SHORT).show();
+                    });
+        } catch (Exception e) {
+            Log.e(TAG, "检查更新失败", e);
+            btnCheckUpdate.setEnabled(true);
+            btnCheckUpdate.setText(getString(R.string.check_update));
+            Toast.makeText(this, getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
      * 检查是否有新版本（静默，失败不提示）
      */
     private void checkForUpdates() {
         try {
             String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            UpdateChecker.checkForUpdates(currentVersion,
+            UpdateChecker.checkForUpdates(this, currentVersion,
                     (latestVersion, releasePageUrl, apkDownloadUrl) ->
-                            showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl));
+                            showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl),
+                    null);
         } catch (Exception e) {
             // 获取版本号失败时静默忽略，不影响主流程
         }
