@@ -22,6 +22,37 @@ runs:
         gradle-version: wrapper
         cache-read-only: ${{ inputs.cache-read-only }}
 
+    - name: Prepare Android SDK for managed device
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [[ -d "/usr/local/lib/android/sdk" ]]; then
+          export ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
+        elif [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
+          export ANDROID_SDK_ROOT
+        elif [[ -n "${ANDROID_HOME:-}" ]]; then
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+        else
+          echo "未找到 Android SDK 路径"
+          exit 1
+        fi
+
+        export ANDROID_HOME="$ANDROID_SDK_ROOT"
+        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+        SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+        if [[ ! -x "$SDKMANAGER" ]]; then
+          echo "sdkmanager 不存在: $SDKMANAGER"
+          exit 1
+        fi
+
+        yes | "$SDKMANAGER" --licenses > /dev/null
+        "$SDKMANAGER" --install \
+          "platform-tools" \
+          "emulator" \
+          "system-images;android-31;google_apis;x86_64"
+
     - name: Run managed device smoke test
       shell: bash
       run: |
