@@ -1,5 +1,5 @@
 name: Android Smoke Test
-description: 使用 AGP Managed Virtual Device 运行最小 UI 冒烟测试
+description: 使用 android-emulator-runner 运行最小 UI 冒烟测试
 
 inputs:
   cache-read-only:
@@ -22,53 +22,14 @@ runs:
         gradle-version: wrapper
         cache-read-only: ${{ inputs.cache-read-only }}
 
-    - name: Prepare Android SDK for managed device
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        if [[ -d "/usr/local/lib/android/sdk" ]]; then
-          export ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
-        elif [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
-          export ANDROID_SDK_ROOT
-        elif [[ -n "${ANDROID_HOME:-}" ]]; then
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-        else
-          echo "未找到 Android SDK 路径"
-          exit 1
-        fi
-
-        export ANDROID_HOME="$ANDROID_SDK_ROOT"
-        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-
-          SDKMANAGER=""
-          if command -v sdkmanager >/dev/null 2>&1; then
-            SDKMANAGER="$(command -v sdkmanager)"
-          elif [[ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]]; then
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-        else
-          CANDIDATE="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -mindepth 2 -maxdepth 2 -type f -name sdkmanager 2>/dev/null | head -n 1 || true)"
-          if [[ -n "$CANDIDATE" ]]; then
-            SDKMANAGER="$CANDIDATE"
-          elif [[ -x "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" ]]; then
-            SDKMANAGER="$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
-          fi
-        fi
-
-        if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
-          echo "sdkmanager 不存在，已尝试 cmdline-tools/latest、cmdline-tools/<version>、tools/bin"
-          exit 1
-        fi
-
-          yes | "$SDKMANAGER" --licenses > /dev/null || true
-        "$SDKMANAGER" --install \
-          "platform-tools" \
-          "emulator" \
-          "system-images;android-31;google_apis;x86_64"
-
-    - name: Run managed device smoke test
-      shell: bash
-      run: |
-        set -euo pipefail
-        chmod +x gradlew
-        ./gradlew --no-daemon pixel6Api31DebugAndroidTest
+    - name: Run emulator smoke test
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 31
+        target: google_apis
+        arch: x86_64
+        profile: pixel_6
+        emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+        disable-animations: true
+        emulator-boot-timeout: 900
+        script: ./gradlew --no-daemon connectedDebugAndroidTest
