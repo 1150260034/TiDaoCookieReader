@@ -45,6 +45,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Run shared smoke test action
         uses: ./.github/actions/android-smoke-test
 
