@@ -2,6 +2,7 @@ package com.tidao.wuxia.app.ui;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -9,6 +10,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -18,6 +21,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
 import com.tidao.wuxia.app.AutomationReceiver;
 import com.tidao.wuxia.app.R;
 import com.tidao.wuxia.app.cookie.BindingChecker;
@@ -25,6 +30,9 @@ import com.tidao.wuxia.app.cookie.CookieExtractor;
 import com.tidao.wuxia.app.cookie.GameDatabaseReader;
 import com.tidao.wuxia.app.cookie.WebViewCookieReader;
 import com.tidao.wuxia.app.utils.RootChecker;
+import com.tidao.wuxia.app.utils.UpdateChecker;
+
+import java.io.File;
 
 /**
  * 主界面 - Cookie读取器
@@ -63,6 +71,11 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private GameDatabaseReader.SingleRole selectedRole = null;
     private String dailyWelfareCheckResult = "";
 
+    // 更新下载
+    private long updateDownloadId = -1;
+    private BroadcastReceiver downloadCompleteReceiver;
+    private String updateReleasePageUrl = "";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +90,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         setupListeners();
         checkRootStatus();
         registerAutomationReceiver();
+        checkForUpdates();
     }
 
     @Override
@@ -84,6 +98,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         super.onDestroy();
         AutomationReceiver.clearListener();
         unregisterAutomationReceiver();
+        unregisterDownloadReceiver();
     }
 
     /**
@@ -517,6 +532,216 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
         // 执行绑定检测
         BindingChecker.checkBindingStatus(this, cookieData);
+    }
+
+    /**
+     * 检查是否有新版本（静默，失败不提示）
+     */
+    private void checkForUpdates() {
+        try {
+            String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            UpdateChecker.checkForUpdates(currentVersion,
+                    (latestVersion, releasePageUrl, apkDownloadUrl) ->
+                            showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl));
+        } catch (Exception e) {
+            // 获取版本号失败时静默忽略，不影响主流程
+        }
+    }
+
+    /**
+     * 弹出更新提示对话框
+     *
+     * @param latestVersion  最新版本号
+     * @param releasePageUrl GitHub Releases 页面（兜底）
+     * @param apkDownloadUrl APK 直链；为空时只显示「打开下载页」
+     */
+    private void showUpdateDialog(String latestVersion, String releasePageUrl, String apkDownloadUrl) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle("发现新版本 v" + latestVersion)
+                .setMessage("当前版本较旧，建议更新到最新版本。")
+                .setNegativeButton("忽略", null);
+
+        if (!apkDownloadUrl.isEmpty()) {
+            builder.setPositiveButton("直接下载安装", (dialog, which) ->
+                    startApkDownload(apkDownloadUrl, releasePageUrl));
+            builder.setNeutralButton("打开下载页", (dialog, which) ->
+                    openReleasePage(releasePageUrl));
+        } else {
+            builder.setPositiveButton("打开下载页", (dialog, which) ->
+                    openReleasePage(releasePageUrl));
+        }
+
+        builder.show();
+    }
+
+    /**
+     * 打开 GitHub Releases 页面（兜底路径）
+     */
+    private void openReleasePage(String releasePageUrl) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(releasePageUrl));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "打开链接失败，请手动访问：" + releasePageUrl, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * 使用 DownloadManager 下载 APK 并在完成后触发安装；失败时给出兜底链接
+     */
+    private void startApkDownload(String apkDownloadUrl, String releasePageUrl) {
+        // 检查是否允许安装未知来源应用
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("需要开启「安装未知应用」权限")
+                    .setMessage("请在设置中允许本应用安装 APK，或前往下载页手动安装。")
+                    .setPositiveButton("前往设置", (d, w) -> {
+                        try {
+                            Intent intent = new Intent(
+                                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:" + getPackageName()));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            openReleasePage(releasePageUrl);
+                        }
+                    })
+                    .setNeutralButton("打开下载页", (d, w) -> openReleasePage(releasePageUrl))
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+
+        try {
+            // 清理上次残留的 APK 文件（若外部存储可用）
+            File externalDir = getExternalFilesDir(null);
+            if (externalDir != null) {
+                File destFile = new File(externalDir, "update.apk");
+                if (destFile.exists()) destFile.delete();
+            }
+
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkDownloadUrl));
+            request.setTitle("天刀Cookie助手 新版本下载中...");
+            request.setDescription("正在下载更新包，请稍候");
+            request.setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            // 使用外部文件目录作为下载目标路径，避免直接依赖 getExternalFilesDir(null) 的非空返回
+            request.setDestinationInExternalFilesDir(this, null, "update.apk");
+
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            updateDownloadId = dm.enqueue(request);
+
+            Toast.makeText(this, "开始下载更新，完成后将自动提示安装", Toast.LENGTH_SHORT).show();
+            appendLog("正在下载新版本...");
+
+            // 注册下载完成广播，同时缓存 releasePageUrl 供安装失败时兜底使用
+            updateReleasePageUrl = releasePageUrl;
+            registerDownloadReceiver(releasePageUrl);
+
+        } catch (Exception e) {
+            Log.w(TAG, "DownloadManager 启动失败: " + e.getMessage());
+            showDownloadFailedDialog(releasePageUrl);
+        }
+    }
+
+    /**
+     * 注册下载完成广播接收器
+     */
+    private void registerDownloadReceiver(String releasePageUrl) {
+        unregisterDownloadReceiver(); // 避免重复注册
+        downloadCompleteReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (id != updateDownloadId) return;
+
+                try {
+                    DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    DownloadManager.Query query = new DownloadManager.Query();
+                    query.setFilterById(id);
+                    Cursor cursor = dm.query(query);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                        int status = (statusIdx >= 0) ? cursor.getInt(statusIdx) : -1;
+                        cursor.close();
+
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            installDownloadedApk();
+                        } else {
+                            appendLog("下载失败（状态码: " + status + "），请手动下载");
+                            showDownloadFailedDialog(releasePageUrl);
+                        }
+                    } else {
+                        if (cursor != null) cursor.close();
+                        showDownloadFailedDialog(releasePageUrl);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "处理下载完成事件失败: " + e.getMessage());
+                    showDownloadFailedDialog(releasePageUrl);
+                }
+            }
+        };
+        registerReceiver(downloadCompleteReceiver,
+                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+    }
+
+    /**
+     * 注销下载完成广播接收器
+     */
+    private void unregisterDownloadReceiver() {
+        if (downloadCompleteReceiver != null) {
+            try {
+                unregisterReceiver(downloadCompleteReceiver);
+            } catch (Exception e) {
+                // 未注册时忽略
+            }
+            downloadCompleteReceiver = null;
+        }
+    }
+
+    /**
+     * 触发系统安装器安装已下载的 APK
+     */
+    private void installDownloadedApk() {
+        try {
+            File externalDir = getExternalFilesDir(null);
+            if (externalDir == null) {
+                appendLog("无法获取外部存储目录，安装失败");
+                showDownloadFailedDialog(updateReleasePageUrl);
+                return;
+            }
+            File apkFile = new File(externalDir, "update.apk");
+            if (!apkFile.exists()) {
+                appendLog("安装包文件不存在，请重试");
+                showDownloadFailedDialog(updateReleasePageUrl);
+                return;
+            }
+            Uri apkUri = FileProvider.getUriForFile(
+                    this, getPackageName() + ".fileprovider", apkFile);
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(installIntent);
+            appendLog("安装包下载完成，请按提示安装");
+        } catch (Exception e) {
+            Log.w(TAG, "触发安装失败: " + e.getMessage());
+            appendLog("安装失败: " + e.getMessage());
+            showDownloadFailedDialog(updateReleasePageUrl);
+        }
+    }
+
+    /**
+     * 下载或安装失败时弹出兜底对话框
+     */
+    private void showDownloadFailedDialog(String releasePageUrl) {
+        new AlertDialog.Builder(this)
+                .setTitle("下载失败")
+                .setMessage("下载更新包失败，请前往发布页面手动下载安装。\n\n" + releasePageUrl)
+                .setPositiveButton("打开下载页", (d, w) -> openReleasePage(releasePageUrl))
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void updateStatus(String status) {

@@ -13,12 +13,16 @@
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 下载安装
 
+前往 [GitHub Releases](https://github.com/1150260034/TiDaoCookieReader/releases/latest) 下载最新版 APK，
+将其安装到已 Root 的模拟器中。
+
+### 2. 本地构建（可选）
+
+**依赖：**
 - [Android Studio](https://developer.android.com/studio)
 - MuMu 模拟器（需开启 Root 权限）
-
-### 2. 构建
 
 ```bash
 ./gradlew assembleDebug      # 调试 APK
@@ -27,7 +31,7 @@
 
 ### 3. 安装运行
 
-1. 安装 `app-debug.apk` 到已 Root 的模拟器
+1. 安装 APK 到已 Root 的模拟器
 2. 安装天刀助手并扫码登录
 3. 在天刀助手中点击「周周载愿」
 4. 打开本 App → 点「读取Cookie」→ 点「复制全部」
@@ -37,15 +41,19 @@
 ```text
 TiDaoCookieReader/
 ├── app/src/main/java/com/tidao/wuxia/app/
-│   ├── ui/MainActivity.java          # 主界面
+│   ├── ui/MainActivity.java          # 主界面（含应用内更新下载安装）
 │   ├── AutomationReceiver.java       # ADB 广播接收器（自动化测试用）
 │   ├── cookie/
 │   │   ├── WebViewCookieReader.java  # 通过 su 读取天刀助手 WebView Cookie 数据库
 │   │   ├── GameDatabaseReader.java   # 通过 su 读取游戏数据库 Role 表
 │   │   ├── BindingChecker.java       # 调用 AMS API 检测每日福利绑定状态
 │   │   └── CookieExtractor.java      # HTTP 流量解析（本地代理模式，已不使用）
-│   └── utils/RootChecker.java        # Root 权限检测
-├── app/src/main/res/layout/activity_main.xml
+│   └── utils/
+│       ├── RootChecker.java          # Root 权限检测
+│       └── UpdateChecker.java        # GitHub Releases 版本检查（含 APK 直链提取）
+├── app/src/main/res/
+│   ├── layout/activity_main.xml
+│   └── xml/file_paths.xml            # FileProvider 路径配置（APK 安装授权）
 ├── build.gradle                       # AGP 8.5.0
 └── settings.gradle                   # 使用阿里云镜像加速 Gradle 依赖
 ```
@@ -77,7 +85,8 @@ adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
 
 ## CI/CD
 
-- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK；push 时自动更新 GitHub "latest" prerelease
+- **android-build.yml** — push 到 main/master 或 PR 时构建调试 APK
+- **android-publish.yml** — push 到 main/master 且涉及应用代码变更时，更新仓库唯一的 `latest` release（tag `latest`），始终指向最新构建；`GET /releases/latest` API 可命中
 - **android-release.yml** — 打 tag (`v*`) 时构建发布 APK 并创建 GitHub Release
 
 ## License

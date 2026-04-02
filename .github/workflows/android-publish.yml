@@ -39,31 +39,27 @@ jobs:
           variant: Debug
           cache-read-only: false
 
-      - name: Publish versioned prerelease
+      - name: Publish latest release
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' app/build.gradle)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
-          RELEASE_TAG="v${VERSION_NAME}-${SHORT_SHA}"
-          APK_NAME="TiDaoCookieReader-debug-v${VERSION_NAME}-${SHORT_SHA}.apk"
-          RELEASE_NOTES="$(printf '## 自动构建\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")"
+          APK_NAME="TiDaoCookieReader-latest.apk"
+          RELEASE_NOTES="$(printf '## 最新构建\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")"
 
           cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
 
-          if gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
-            gh release edit "${RELEASE_TAG}" \
-              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
-              --notes "${RELEASE_NOTES}" \
-              --prerelease
-            gh release upload "${RELEASE_TAG}" \
-              "app/build/outputs/apk/debug/${APK_NAME}" \
-              --clobber
-          else
-            gh release create "${RELEASE_TAG}" \
-              --title "Build v${VERSION_NAME} (${SHORT_SHA})" \
-              --notes "${RELEASE_NOTES}" \
-              --prerelease \
-              "app/build/outputs/apk/debug/${APK_NAME}"
-          fi
+          # 删除旧的 latest release 及其 tag（幂等，失败时忽略）
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+
+          # 强制推送新的 latest tag
+          git tag -f latest
+          git push origin refs/tags/latest --force
+
+          # 创建新的 latest release（非 prerelease，确保 /releases/latest API 可命中）
+          gh release create latest \
+            --title "最新版本 v${VERSION_NAME}" \
+            --notes "${RELEASE_NOTES}" \
+            "app/build/outputs/apk/debug/${APK_NAME}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
