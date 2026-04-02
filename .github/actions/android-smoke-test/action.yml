@@ -1,0 +1,44 @@
+name: Android Smoke Test
+description: 构建 APK 并使用 SrgGactionEmulatorenvsetupAndroid 在模拟器上运行冒烟测试
+
+inputs:
+  cache-read-only:
+    description: Gradle 缓存是否为只读模式
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: wrapper
+        cache-read-only: ${{ inputs.cache-read-only }}
+
+    - name: Build Debug APK
+      shell: bash
+      run: |
+        chmod +x gradlew
+        ./gradlew --no-daemon assembleDebug
+
+    - name: Make smoke test script executable
+      shell: bash
+      run: chmod +x scripts/smoke-test.sh
+
+    - name: Run emulator smoke test
+      uses: SweetRainGarden/SrgGactionEmulatorenvsetupAndroid@v1.1.0.0
+      with:
+        apk-path: ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk
+        run-script-path: ./scripts/smoke-test.sh
+        api-level: "30"
+        target: google_apis
+        arch: x86_64
+        profile: Nexus 6
+        emulator-boot-timeout: "900"

@@ -12,13 +12,30 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Debug APK
+  validate:
+    name: Validate Android Resources
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate file_paths.xml
+        run: |
+          chmod +x scripts/validate-file-paths.sh
+          ./scripts/validate-file-paths.sh
+
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Build Debug APK
         uses: ./.github/actions/android-build
@@ -32,3 +49,21 @@ jobs:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  smoke-test:
+    name: Smoke Test on Emulator
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Run shared smoke test action
+        uses: ./.github/actions/android-smoke-test
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
