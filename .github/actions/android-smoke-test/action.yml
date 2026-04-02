@@ -32,4 +32,4 @@ runs:
         emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
         disable-animations: true
         emulator-boot-timeout: 900
-        script: ./gradlew --no-daemon connectedDebugAndroidTest
+        script: timeout 25m ./gradlew --no-daemon --stacktrace connectedDebugAndroidTest
