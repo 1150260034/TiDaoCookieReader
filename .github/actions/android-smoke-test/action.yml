@@ -33,7 +33,7 @@ runs:
       run: chmod +x scripts/smoke-test.sh
 
     - name: Run emulator smoke test
-      uses: SweetRainGarden/SrgGactionEmulatorenvsetupAndroid@main
+      uses: SweetRainGarden/SrgGactionEmulatorenvsetupAndroid@v1.1.0.0
       with:
         apk-path: ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk
         run-script-path: ./scripts/smoke-test.sh
