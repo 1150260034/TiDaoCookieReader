@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -30,7 +31,12 @@ public class UpdateChecker {
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public interface UpdateCallback {
-        void onUpdateAvailable(String latestVersion, String releaseUrl);
+        /**
+         * @param latestVersion   最新版本号，如 "1.3.0"
+         * @param releasePageUrl  GitHub Releases 页面地址（兜底用）
+         * @param apkDownloadUrl  APK 直接下载地址；assets 为空时为空字符串
+         */
+        void onUpdateAvailable(String latestVersion, String releasePageUrl, String apkDownloadUrl);
     }
 
     /**
@@ -69,6 +75,13 @@ public class UpdateChecker {
                 String tagName = json.optString("tag_name", "");
                 String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
 
+                // 提取第一个 asset 的 APK 直链，供应用内下载使用
+                String apkDownloadUrl = "";
+                JSONArray assets = json.optJSONArray("assets");
+                if (assets != null && assets.length() > 0) {
+                    apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
+                }
+
                 if (tagName.isEmpty()) return;
 
                 // 提取版本号：去掉前缀 "v"
@@ -76,8 +89,9 @@ public class UpdateChecker {
 
                 if (isNewerVersion(latestVersion, currentVersion)) {
                     Log.d(TAG, "发现新版本: " + latestVersion);
+                    final String finalApkUrl = apkDownloadUrl;
                     new Handler(Looper.getMainLooper()).post(() ->
-                            callback.onUpdateAvailable(latestVersion, htmlUrl));
+                            callback.onUpdateAvailable(latestVersion, htmlUrl, finalApkUrl));
                 } else {
                     Log.d(TAG, "当前已是最新版本");
                 }
