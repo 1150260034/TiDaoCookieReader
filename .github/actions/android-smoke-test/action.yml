@@ -25,10 +25,12 @@ runs:
     - name: Run emulator smoke test
       uses: reactivecircus/android-emulator-runner@v2
       with:
-        api-level: 34
+        api-level: 31
+        target: google_apis
         arch: x86_64
         profile: pixel_6
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-linux-hw-accel: true
+        emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
         disable-animations: true
         script: |
           set -euo pipefail
