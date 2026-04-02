@@ -18,6 +18,10 @@ inputs:
     description: Gradle 缓存是否为只读模式
     required: false
     default: 'false'
+  version-code:
+    description: 覆盖 versionCode（留空则使用 build.gradle 默认值）
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -38,4 +42,8 @@ runs:
       shell: bash
       run: |
         chmod +x gradlew
-        ./gradlew --no-daemon assemble${{ inputs.variant }}
+        EXTRA_ARGS=""
+        if [ -n "${{ inputs.version-code }}" ]; then
+          EXTRA_ARGS="-PciVersionCode=${{ inputs.version-code }}"
+        fi
+        ./gradlew --no-daemon $EXTRA_ARGS assemble${{ inputs.variant }}

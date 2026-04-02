@@ -20,6 +20,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.tidao.wuxia.app.BuildConfig;
+
 /**
  * 检查 GitHub Releases 是否有新版本
  */
@@ -125,6 +127,7 @@ public class UpdateChecker {
                 String tagName = json.optString("tag_name", "");
                 String releaseName = json.optString("name", "");
                 String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
+                String publishedAt = json.optString("published_at", "");
 
                 // 提取第一个 asset 的 APK 直链，供应用内下载使用
                 String apkDownloadUrl = "";
@@ -145,8 +148,15 @@ public class UpdateChecker {
                     latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                 }
 
-                if (isNewerVersion(latestVersion, currentVersion)) {
-                    Log.d(TAG, "发现新版本: " + latestVersion);
+                boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
+                // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
+                boolean hasNewerBuild = !hasNewerVersion
+                        && isSameVersion(latestVersion, currentVersion)
+                        && hasNewerBuildNumber(releaseName);
+
+                if (hasNewerVersion || hasNewerBuild) {
+                    Log.d(TAG, "发现新版本: " + latestVersion
+                            + (hasNewerBuild ? "（构建号更高）" : ""));
                     final String finalApkUrl = apkDownloadUrl;
                     final String finalVersion = latestVersion;
                     postCallback(requestId, () ->
@@ -227,6 +237,46 @@ public class UpdateChecker {
             }
             return false;
         } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断两个版本号是否完全相同（忽略 prerelease 后缀，补零对齐）
+     */
+    private static boolean isSameVersion(String latest, String current) {
+        try {
+            latest = latest.split("-")[0];
+            current = current.split("-")[0];
+            String[] latestParts = latest.split("\\.");
+            String[] currentParts = current.split("\\.");
+            int len = Math.max(latestParts.length, currentParts.length);
+            for (int i = 0; i < len; i++) {
+                int lp = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
+                int cp = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
+                if (lp != cp) return false;
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 从 release name 中提取构建号并与本地 VERSION_CODE 比较。
+     * release name 格式: "最新版本 v1.2.1 (Build 42)"，提取 42。
+     * 若远端构建号 > 本地 VERSION_CODE 则认为有更新。
+     */
+    private static boolean hasNewerBuildNumber(String releaseName) {
+        if (releaseName == null || releaseName.isEmpty()) return false;
+        try {
+            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(releaseName);
+            if (!m.find()) return false;
+            int remoteBuild = Integer.parseInt(m.group(1));
+            int localBuild = BuildConfig.VERSION_CODE;
+            return remoteBuild > localBuild;
+        } catch (Exception e) {
+            Log.d(TAG, "构建号解析失败: " + e.getMessage());
             return false;
         }
     }
