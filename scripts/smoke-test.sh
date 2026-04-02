@@ -5,7 +5,7 @@ echo "=== 天刀助手 Cookie 读取器 - 冒烟测试 ==="
 
 # 启动应用主界面（-W 等待 Activity 完全启动）
 echo "正在启动 $PACKAGE_NAME ..."
-adb -s "$ADB_DEVICE_SERIAL" shell am start -W -n "$PACKAGE_NAME/.MainActivity"
+adb -s "$ADB_DEVICE_SERIAL" shell am start -W -n "$PACKAGE_NAME/.ui.MainActivity"
 sleep 5
 
 # 检查应用是否在运行
