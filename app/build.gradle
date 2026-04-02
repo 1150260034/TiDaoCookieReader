@@ -15,9 +15,6 @@ android {
         versionName "1.2.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        // 构建时间戳，用于同版本号时判断 release 是否更新
-        buildConfigField "long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L"
     }
 
     buildFeatures {

@@ -16,9 +16,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Locale;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -152,19 +149,16 @@ public class UpdateChecker {
                 }
 
                 boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
-                // 版本号相同时，用 release 发布时间 vs 构建时间戳判断是否有更新构建
+                // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
                 boolean hasNewerBuild = !hasNewerVersion
                         && isSameVersion(latestVersion, currentVersion)
-                        && isNewerBuild(publishedAt);
+                        && hasNewerBuildNumber(releaseName);
 
                 if (hasNewerVersion || hasNewerBuild) {
-                    String displayVersion = hasNewerBuild
-                            ? latestVersion + "（新构建）"
-                            : latestVersion;
-                    Log.d(TAG, "发现新版本: " + displayVersion
-                            + (hasNewerBuild ? "（发布时间晚于构建时间）" : ""));
+                    Log.d(TAG, "发现新版本: " + latestVersion
+                            + (hasNewerBuild ? "（构建号更高）" : ""));
                     final String finalApkUrl = apkDownloadUrl;
-                    final String finalVersion = displayVersion;
+                    final String finalVersion = latestVersion;
                     postCallback(requestId, () ->
                             safeCallback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
@@ -248,36 +242,41 @@ public class UpdateChecker {
     }
 
     /**
-     * 判断两个版本号是否完全相同（忽略 prerelease 后缀）
+     * 判断两个版本号是否完全相同（忽略 prerelease 后缀，补零对齐）
      */
     private static boolean isSameVersion(String latest, String current) {
         try {
             latest = latest.split("-")[0];
             current = current.split("-")[0];
-            return latest.equals(current);
+            String[] latestParts = latest.split("\\.");
+            String[] currentParts = current.split("\\.");
+            int len = Math.max(latestParts.length, currentParts.length);
+            for (int i = 0; i < len; i++) {
+                int lp = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
+                int cp = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
+                if (lp != cp) return false;
+            }
+            return true;
         } catch (Exception e) {
             return false;
         }
     }
 
     /**
-     * 判断 release 发布时间是否晚于当前 APK 的构建时间。
-     * 用于版本号相同时检测是否有更新的构建可用。
-     *
-     * @param publishedAt GitHub release 的 published_at（ISO 8601 格式）
-     * @return true 表示 release 比当前构建更新
+     * 从 release name 中提取构建号并与本地 VERSION_CODE 比较。
+     * release name 格式: "最新版本 v1.2.1 (Build 42)"，提取 42。
+     * 若远端构建号 > 本地 VERSION_CODE 则认为有更新。
      */
-    private static boolean isNewerBuild(String publishedAt) {
-        if (publishedAt == null || publishedAt.isEmpty()) return false;
+    private static boolean hasNewerBuildNumber(String releaseName) {
+        if (releaseName == null || releaseName.isEmpty()) return false;
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
-            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-            long releaseTime = sdf.parse(publishedAt).getTime();
-            long buildTime = BuildConfig.BUILD_TIMESTAMP;
-            // 留 5 分钟容差，避免同一次构建的微小时间差误判
-            return releaseTime > buildTime + 300_000L;
+            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(releaseName);
+            if (!m.find()) return false;
+            int remoteBuild = Integer.parseInt(m.group(1));
+            int localBuild = BuildConfig.VERSION_CODE;
+            return remoteBuild > localBuild;
         } catch (Exception e) {
-            Log.d(TAG, "发布时间解析失败: " + e.getMessage());
+            Log.d(TAG, "构建号解析失败: " + e.getMessage());
             return false;
         }
     }

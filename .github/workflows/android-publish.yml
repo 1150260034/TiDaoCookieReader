@@ -85,7 +85,7 @@ jobs:
 
           # 创建非 prerelease 的 latest release，确保 /releases/latest API 可见
           gh release create "${TAG_NAME}" \
-            --title "最新版本 v${VERSION_NAME}" \
+            --title "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})" \
             --notes "${RELEASE_NOTES}" \
             "app/build/outputs/apk/debug/${APK_NAME}"
         env:
