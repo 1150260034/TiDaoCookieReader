@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# 由 SrgGactionEmulatorenvsetupAndroid 自动注入，加默认值防止 set -u 报错
+PACKAGE_NAME="${PACKAGE_NAME:-com.tidao.wuxia.app}"
+ADB_DEVICE_SERIAL="${ADB_DEVICE_SERIAL:-emulator-5554}"
+
 echo "=== 天刀助手 Cookie 读取器 - 冒烟测试 ==="
 
 # 启动应用主界面（-W 等待 Activity 完全启动）
