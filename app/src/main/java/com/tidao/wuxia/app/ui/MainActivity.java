@@ -545,7 +545,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnCheckUpdate.setText(getString(R.string.checking_update));
         try {
             String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            UpdateChecker.checkForUpdates(currentVersion,
+            UpdateChecker.checkForUpdates(this, currentVersion,
                     (latestVersion, releasePageUrl, apkDownloadUrl) -> {
                         btnCheckUpdate.setEnabled(true);
                         btnCheckUpdate.setText(getString(R.string.check_update));
@@ -570,9 +570,10 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private void checkForUpdates() {
         try {
             String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            UpdateChecker.checkForUpdates(currentVersion,
+            UpdateChecker.checkForUpdates(this, currentVersion,
                     (latestVersion, releasePageUrl, apkDownloadUrl) ->
-                            showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl));
+                            showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl),
+                    null);
         } catch (Exception e) {
             // 获取版本号失败时静默忽略，不影响主流程
         }
