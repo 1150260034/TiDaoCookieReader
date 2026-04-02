@@ -25,6 +25,7 @@ import com.tidao.wuxia.app.cookie.CookieExtractor;
 import com.tidao.wuxia.app.cookie.GameDatabaseReader;
 import com.tidao.wuxia.app.cookie.WebViewCookieReader;
 import com.tidao.wuxia.app.utils.RootChecker;
+import com.tidao.wuxia.app.utils.UpdateChecker;
 
 /**
  * 主界面 - Cookie读取器
@@ -77,6 +78,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         setupListeners();
         checkRootStatus();
         registerAutomationReceiver();
+        checkForUpdates();
     }
 
     @Override
@@ -517,6 +519,40 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
         // 执行绑定检测
         BindingChecker.checkBindingStatus(this, cookieData);
+    }
+
+    /**
+     * 检查是否有新版本（静默，失败不提示）
+     */
+    private void checkForUpdates() {
+        try {
+            String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            UpdateChecker.checkForUpdates(currentVersion,
+                    (latestVersion, releaseUrl) -> showUpdateDialog(latestVersion, releaseUrl));
+        } catch (Exception e) {
+            // 忽略
+        }
+    }
+
+    /**
+     * 弹出更新提示对话框
+     */
+    private void showUpdateDialog(String latestVersion, String releaseUrl) {
+        new AlertDialog.Builder(this)
+                .setTitle("发现新版本 v" + latestVersion)
+                .setMessage("当前版本较旧，建议前往 GitHub Releases 下载最新版本。\n\n下载失败可去 GitHub 手动下载。")
+                .setPositiveButton("立即更新", (dialog, which) -> {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(android.net.Uri.parse(releaseUrl));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "打开链接失败", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("忽略", null)
+                .show();
     }
 
     private void updateStatus(String status) {
