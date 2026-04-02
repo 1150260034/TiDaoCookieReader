@@ -7,6 +7,8 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -73,6 +75,7 @@ public class UpdateChecker {
 
                 JSONObject json = new JSONObject(sb.toString());
                 String tagName = json.optString("tag_name", "");
+                String releaseName = json.optString("name", "");
                 String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
 
                 // 提取第一个 asset 的 APK 直链，供应用内下载使用
@@ -82,16 +85,21 @@ public class UpdateChecker {
                     apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
                 }
 
-                if (tagName.isEmpty()) return;
-
-                // 提取版本号：去掉前缀 "v"
-                String latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
+                // 优先从 release name 中提取版本号（格式如 "最新版本 v1.2.3"）
+                // CI 使用固定 tag `latest`，tag_name 不含有效版本，需从 name 中解析
+                String latestVersion = extractVersionFromName(releaseName);
+                if (latestVersion == null) {
+                    // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
+                    if (tagName.isEmpty()) return;
+                    latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
+                }
 
                 if (isNewerVersion(latestVersion, currentVersion)) {
                     Log.d(TAG, "发现新版本: " + latestVersion);
                     final String finalApkUrl = apkDownloadUrl;
+                    final String finalVersion = latestVersion;
                     new Handler(Looper.getMainLooper()).post(() ->
-                            callback.onUpdateAvailable(latestVersion, htmlUrl, finalApkUrl));
+                            callback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
                     Log.d(TAG, "当前已是最新版本");
                 }
@@ -101,6 +109,17 @@ public class UpdateChecker {
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
             }
         });
+    }
+
+    /**
+     * 从 release name 中提取版本号。
+     * CI 发布的 release name 格式为 "最新版本 v1.2.3"，从中提取 "1.2.3"；
+     * 匹配不到时返回 null（由调用方决定 fallback 策略）。
+     */
+    private static String extractVersionFromName(String releaseName) {
+        if (releaseName == null || releaseName.isEmpty()) return null;
+        Matcher m = Pattern.compile("v(\\d+\\.\\d+(?:\\.\\d+)*)").matcher(releaseName);
+        return m.find() ? m.group(1) : null;
     }
 
     /**
