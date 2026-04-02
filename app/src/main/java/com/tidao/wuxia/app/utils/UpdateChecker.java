@@ -10,6 +10,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 检查 GitHub Releases 是否有新版本
@@ -23,6 +25,10 @@ public class UpdateChecker {
     private static final String RELEASES_PAGE_URL =
             "https://github.com/1150260034/TiDaoCookieReader/releases";
 
+    private static final int TIMEOUT_MS = 5000;
+
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+
     public interface UpdateCallback {
         void onUpdateAvailable(String latestVersion, String releaseUrl);
     }
@@ -34,13 +40,13 @@ public class UpdateChecker {
      * @param callback       发现新版本时的回调（在主线程中调用）
      */
     public static void checkForUpdates(String currentVersion, UpdateCallback callback) {
-        new Thread(() -> {
+        executor.execute(() -> {
             try {
                 URL url = new URL(GITHUB_API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
+                conn.setConnectTimeout(TIMEOUT_MS);
+                conn.setReadTimeout(TIMEOUT_MS);
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
                 conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
 
@@ -80,7 +86,7 @@ public class UpdateChecker {
                 // 网络不通或解析失败，静默忽略，不影响正常使用
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
             }
-        }).start();
+        });
     }
 
     /**
@@ -97,10 +103,10 @@ public class UpdateChecker {
             String[] currentParts = current.split("\\.");
             int len = Math.max(latestParts.length, currentParts.length);
             for (int i = 0; i < len; i++) {
-                int l = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
-                int c = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
-                if (l > c) return true;
-                if (l < c) return false;
+                int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
+                int currentPart = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
+                if (latestPart > currentPart) return true;
+                if (latestPart < currentPart) return false;
             }
             return false;
         } catch (Exception e) {

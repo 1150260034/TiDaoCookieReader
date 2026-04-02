@@ -530,7 +530,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             UpdateChecker.checkForUpdates(currentVersion,
                     (latestVersion, releaseUrl) -> showUpdateDialog(latestVersion, releaseUrl));
         } catch (Exception e) {
-            // 忽略
+            // 获取版本号失败时静默忽略，不影响主流程
         }
     }
 
@@ -540,7 +540,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private void showUpdateDialog(String latestVersion, String releaseUrl) {
         new AlertDialog.Builder(this)
                 .setTitle("发现新版本 v" + latestVersion)
-                .setMessage("当前版本较旧，建议前往 GitHub Releases 下载最新版本。\n\n下载失败可去 GitHub 手动下载。")
+                .setMessage("当前版本较旧，建议前往 GitHub Releases 下载最新版本。")
                 .setPositiveButton("立即更新", (dialog, which) -> {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW);
