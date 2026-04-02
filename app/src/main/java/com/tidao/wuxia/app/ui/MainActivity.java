@@ -13,7 +13,6 @@ import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
@@ -75,6 +74,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     // 更新下载
     private long updateDownloadId = -1;
     private BroadcastReceiver downloadCompleteReceiver;
+    private String updateReleasePageUrl = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -614,16 +614,20 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         }
 
         try {
-            // 清理上次残留的 APK 文件
-            File destFile = new File(getExternalFilesDir(null), "update.apk");
-            if (destFile.exists()) destFile.delete();
+            // 清理上次残留的 APK 文件（若外部存储可用）
+            File externalDir = getExternalFilesDir(null);
+            if (externalDir != null) {
+                File destFile = new File(externalDir, "update.apk");
+                if (destFile.exists()) destFile.delete();
+            }
 
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkDownloadUrl));
             request.setTitle("天刀Cookie助手 新版本下载中...");
             request.setDescription("正在下载更新包，请稍候");
             request.setNotificationVisibility(
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationUri(Uri.fromFile(destFile));
+            // 使用外部文件目录作为下载目标路径，避免直接依赖 getExternalFilesDir(null) 的非空返回
+            request.setDestinationInExternalFilesDir(this, null, "update.apk");
 
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             updateDownloadId = dm.enqueue(request);
@@ -631,7 +635,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             Toast.makeText(this, "开始下载更新，完成后将自动提示安装", Toast.LENGTH_SHORT).show();
             appendLog("正在下载新版本...");
 
-            // 注册下载完成广播
+            // 注册下载完成广播，同时缓存 releasePageUrl 供安装失败时兜底使用
+            updateReleasePageUrl = releasePageUrl;
             registerDownloadReceiver(releasePageUrl);
 
         } catch (Exception e) {
@@ -700,9 +705,16 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
      */
     private void installDownloadedApk() {
         try {
-            File apkFile = new File(getExternalFilesDir(null), "update.apk");
+            File externalDir = getExternalFilesDir(null);
+            if (externalDir == null) {
+                appendLog("无法获取外部存储目录，安装失败");
+                showDownloadFailedDialog(updateReleasePageUrl);
+                return;
+            }
+            File apkFile = new File(externalDir, "update.apk");
             if (!apkFile.exists()) {
                 appendLog("安装包文件不存在，请重试");
+                showDownloadFailedDialog(updateReleasePageUrl);
                 return;
             }
             Uri apkUri = FileProvider.getUriForFile(
@@ -716,7 +728,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         } catch (Exception e) {
             Log.w(TAG, "触发安装失败: " + e.getMessage());
             appendLog("安装失败: " + e.getMessage());
-            Toast.makeText(this, "安装失败，请手动安装 APK", Toast.LENGTH_SHORT).show();
+            showDownloadFailedDialog(updateReleasePageUrl);
         }
     }
 

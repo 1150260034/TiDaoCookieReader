@@ -11,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
@@ -49,9 +50,10 @@ public class UpdateChecker {
      */
     public static void checkForUpdates(String currentVersion, UpdateCallback callback) {
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 URL url = new URL(GITHUB_API_URL);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(TIMEOUT_MS);
                 conn.setReadTimeout(TIMEOUT_MS);
@@ -66,7 +68,7 @@ public class UpdateChecker {
 
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(conn.getInputStream()))) {
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         sb.append(line);
@@ -107,6 +109,8 @@ public class UpdateChecker {
             } catch (Exception e) {
                 // 网络不通或解析失败，静默忽略，不影响正常使用
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
