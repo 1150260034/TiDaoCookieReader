@@ -44,8 +44,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
     // 注意: TAG 已经在父类定义
 
-    // 广播接收器
-    private BroadcastReceiver automationReceiver;
     private static final String TAG = "MainActivity";
 
     // 天刀助手包名
@@ -91,7 +89,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         initViews();
         setupListeners();
         checkRootStatus();
-        registerAutomationReceiver();
+        bindAutomationReceiver();
         checkForUpdates();
     }
 
@@ -99,30 +97,15 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     protected void onDestroy() {
         super.onDestroy();
         AutomationReceiver.clearListener();
-        unregisterAutomationReceiver();
         unregisterDownloadReceiver();
     }
 
     /**
-     * 注册自动化广播接收器
+     * 绑定自动化监听器，避免与清单中的接收器重复处理同一广播
      */
-    private void registerAutomationReceiver() {
-        automationReceiver = new AutomationReceiver();
-        IntentFilter filter = AutomationReceiver.getIntentFilter();
-        registerReceiverCompat(automationReceiver, filter, true);
+    private void bindAutomationReceiver() {
         AutomationReceiver.setListener(this);
-        Log.d(TAG, "AutomationReceiver registered");
-    }
-
-    /**
-     * 注销自动化广播接收器
-     */
-    private void unregisterAutomationReceiver() {
-        if (automationReceiver != null) {
-            unregisterReceiver(automationReceiver);
-            automationReceiver = null;
-            Log.d(TAG, "AutomationReceiver unregistered");
-        }
+        Log.d(TAG, "AutomationReceiver listener bound");
     }
 
     // ========== AutomationListener 实现 ==========
@@ -715,7 +698,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             }
         };
         registerReceiverCompat(downloadCompleteReceiver,
-                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), false);
+            new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), true);
     }
 
     private void registerReceiverCompat(BroadcastReceiver receiver, IntentFilter filter,

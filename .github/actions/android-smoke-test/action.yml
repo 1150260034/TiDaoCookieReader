@@ -1,0 +1,51 @@
+name: Android Smoke Test
+description: 在 Android 模拟器中运行最小 UI 测试并检查主界面启动崩溃
+
+inputs:
+  cache-read-only:
+    description: Gradle 缓存是否为只读模式
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: wrapper
+        cache-read-only: ${{ inputs.cache-read-only }}
+
+    - name: Run emulator smoke test
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 34
+        arch: x86_64
+        profile: pixel_6
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: true
+        script: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon connectedDebugAndroidTest
+          adb logcat -c
+          set +e
+          adb shell am start -W -n com.tidao.wuxia.app/.ui.MainActivity
+          START_EXIT_CODE=$?
+          set -e
+          sleep 5
+          if [ "$START_EXIT_CODE" -ne 0 ]; then
+            echo "MainActivity 启动失败"
+            adb logcat -d
+            exit 1
+          fi
+          if adb logcat -d | grep -A 5 -E "FATAL EXCEPTION|Unable to get provider" | grep "Process: com.tidao.wuxia.app"; then
+            echo "检测到应用启动崩溃"
+            exit 1
+          fi

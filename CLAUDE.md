@@ -64,8 +64,8 @@ MainActivity 整合 → copyAll() → 剪贴板
 
 ## CI/CD
 
-- **android-build.yml** — push 到 main/master 或 PR 时先校验 `file_paths.xml`，再构建调试 APK，并在 Android 模拟器上执行 `connectedDebugAndroidTest` 与主界面启动冒烟检查
-- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat` 变更时触发；发布前先校验 `file_paths.xml` 并在模拟器上复用最小 UI/启动冒烟，再发布 GitHub prerelease，tag 为 `latest`，幂等
+- **android-build.yml** — push 到 main/master 或 PR 时先校验 `file_paths.xml`，再构建调试 APK，并调用复用的 Android 模拟器冒烟 action 执行 `connectedDebugAndroidTest` 与主界面启动检查
+- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat` 变更时触发；发布前先校验 `file_paths.xml` 并调用同一套模拟器冒烟 action，再发布 GitHub release（tag 固定为 `latest`，非 prerelease，幂等）
 - **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release
 
 ## 分支规范
