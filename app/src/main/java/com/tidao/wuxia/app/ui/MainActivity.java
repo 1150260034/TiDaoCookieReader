@@ -542,23 +542,25 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
      */
     private void checkForUpdatesManual() {
         btnCheckUpdate.setEnabled(false);
-        btnCheckUpdate.setText("检查中...");
+        btnCheckUpdate.setText(getString(R.string.checking_update));
         try {
             String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             UpdateChecker.checkForUpdates(currentVersion,
                     (latestVersion, releasePageUrl, apkDownloadUrl) -> {
                         btnCheckUpdate.setEnabled(true);
-                        btnCheckUpdate.setText("检查更新");
+                        btnCheckUpdate.setText(getString(R.string.check_update));
                         showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl);
                     },
                     () -> {
                         btnCheckUpdate.setEnabled(true);
-                        btnCheckUpdate.setText("检查更新");
-                        Toast.makeText(this, "当前已是最新版本", Toast.LENGTH_SHORT).show();
+                        btnCheckUpdate.setText(getString(R.string.check_update));
+                        Toast.makeText(this, getString(R.string.latest_version), Toast.LENGTH_SHORT).show();
                     });
         } catch (Exception e) {
+            Log.e(TAG, "检查更新启动失败", e);
             btnCheckUpdate.setEnabled(true);
-            btnCheckUpdate.setText("检查更新");
+            btnCheckUpdate.setText(getString(R.string.check_update));
+            Toast.makeText(this, getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show();
         }
     }
 

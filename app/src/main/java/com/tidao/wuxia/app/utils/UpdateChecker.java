@@ -74,6 +74,9 @@ public class UpdateChecker {
                 int responseCode = conn.getResponseCode();
                 if (responseCode != 200) {
                     Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
+                    if (noUpdateCallback != null) {
+                        new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                    }
                     return;
                 }
 
@@ -103,7 +106,12 @@ public class UpdateChecker {
                 String latestVersion = extractVersionFromName(releaseName);
                 if (latestVersion == null) {
                     // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
-                    if (tagName.isEmpty()) return;
+                    if (tagName.isEmpty()) {
+                        if (noUpdateCallback != null) {
+                            new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                        }
+                        return;
+                    }
                     latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                 }
 
@@ -121,7 +129,7 @@ public class UpdateChecker {
                 }
 
             } catch (Exception e) {
-                // 网络不通或解析失败，静默忽略，不影响正常使用
+                // 网络不通或解析失败，触发无更新回调（若有）
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
                 if (noUpdateCallback != null) {
                     new Handler(Looper.getMainLooper()).post(noUpdateCallback);
