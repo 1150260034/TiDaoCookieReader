@@ -12,9 +12,23 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    name: Validate Android Resources
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate file_paths.xml
+        run: |
+          chmod +x scripts/validate-file-paths.sh
+          ./scripts/validate-file-paths.sh
+
   build:
     name: Build Debug APK
     runs-on: ubuntu-latest
+    needs: validate
 
     steps:
       - name: Checkout
@@ -32,3 +46,41 @@ jobs:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  smoke-test:
+    name: Smoke Test on Emulator
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Run emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            chmod +x gradlew
+            ./gradlew --no-daemon connectedDebugAndroidTest
+            adb logcat -c
+            adb shell am start -W -n com.tidao.wuxia.app/.ui.MainActivity
+            sleep 5
+            if adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime|Unable to get provider|Process: com.tidao.wuxia.app"; then
+              echo "检测到启动崩溃"
+              exit 1
+            fi

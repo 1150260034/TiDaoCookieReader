@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -108,7 +109,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private void registerAutomationReceiver() {
         automationReceiver = new AutomationReceiver();
         IntentFilter filter = AutomationReceiver.getIntentFilter();
-        registerReceiver(automationReceiver, filter);
+        registerReceiverCompat(automationReceiver, filter, true);
         AutomationReceiver.setListener(this);
         Log.d(TAG, "AutomationReceiver registered");
     }
@@ -713,8 +714,18 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 }
             }
         };
-        registerReceiver(downloadCompleteReceiver,
-                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        registerReceiverCompat(downloadCompleteReceiver,
+                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), false);
+    }
+
+    private void registerReceiverCompat(BroadcastReceiver receiver, IntentFilter filter,
+                                        boolean exported) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter,
+                    exported ? Context.RECEIVER_EXPORTED : Context.RECEIVER_NOT_EXPORTED);
+            return;
+        }
+        registerReceiver(receiver, filter);
     }
 
     /**
