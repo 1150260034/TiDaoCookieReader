@@ -41,8 +41,10 @@ runs:
         export ANDROID_HOME="$ANDROID_SDK_ROOT"
         echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-        SDKMANAGER=""
-        if [[ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]]; then
+          SDKMANAGER=""
+          if command -v sdkmanager >/dev/null 2>&1; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          elif [[ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]]; then
           SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
         else
           CANDIDATE="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -mindepth 2 -maxdepth 2 -type f -name sdkmanager 2>/dev/null | head -n 1 || true)"
@@ -58,7 +60,7 @@ runs:
           exit 1
         fi
 
-        yes | "$SDKMANAGER" --licenses > /dev/null
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
         "$SDKMANAGER" --install \
           "platform-tools" \
           "emulator" \
