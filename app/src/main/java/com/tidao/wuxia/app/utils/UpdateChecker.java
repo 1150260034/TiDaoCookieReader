@@ -49,6 +49,17 @@ public class UpdateChecker {
      * @param callback       发现新版本时的回调（在主线程中调用）
      */
     public static void checkForUpdates(String currentVersion, UpdateCallback callback) {
+        checkForUpdates(currentVersion, callback, null);
+    }
+
+    /**
+     * 异步检查是否有新版本，支持无更新/失败时的回调（用于手动触发时恢复 UI 状态）
+     *
+     * @param currentVersion    当前版本号，如 "1.2.1"
+     * @param callback          发现新版本时的回调（在主线程中调用）
+     * @param noUpdateCallback  无新版本或检测失败时的回调（在主线程中调用），为 null 则静默
+     */
+    public static void checkForUpdates(String currentVersion, UpdateCallback callback, Runnable noUpdateCallback) {
         executor.execute(() -> {
             HttpURLConnection conn = null;
             try {
@@ -104,11 +115,17 @@ public class UpdateChecker {
                             callback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
                     Log.d(TAG, "当前已是最新版本");
+                    if (noUpdateCallback != null) {
+                        new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                    }
                 }
 
             } catch (Exception e) {
                 // 网络不通或解析失败，静默忽略，不影响正常使用
                 Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
+                if (noUpdateCallback != null) {
+                    new Handler(Looper.getMainLooper()).post(noUpdateCallback);
+                }
             } finally {
                 if (conn != null) conn.disconnect();
             }

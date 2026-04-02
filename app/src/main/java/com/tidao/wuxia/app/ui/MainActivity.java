@@ -58,6 +58,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private Button btnOpenTianDao;
     private Button btnReadCookie;
     private Button btnCopyAll;
+    private Button btnCheckUpdate;
     private TextView tvStatus;
     private TextView tvLog;
     private TextView tvVersion;
@@ -173,6 +174,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao = findViewById(R.id.btn_open_tiandao);
         btnReadCookie = findViewById(R.id.btn_read_cookie);
         btnCopyAll = findViewById(R.id.btn_copy_all);
+        btnCheckUpdate = findViewById(R.id.btn_check_update);
         tvStatus = findViewById(R.id.tv_status);
         tvLog = findViewById(R.id.tv_log);
         tvVersion = findViewById(R.id.tv_version);
@@ -218,6 +220,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao.setOnClickListener(v -> openTianDao());
         btnReadCookie.setOnClickListener(v -> readWebViewCookie());
         btnCopyAll.setOnClickListener(v -> copyAll());
+        btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
     }
 
     /**
@@ -532,6 +535,31 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
         // 执行绑定检测
         BindingChecker.checkBindingStatus(this, cookieData);
+    }
+
+    /**
+     * 手动触发更新检查（按钮点击），有结果后恢复按钮状态并给出提示
+     */
+    private void checkForUpdatesManual() {
+        btnCheckUpdate.setEnabled(false);
+        btnCheckUpdate.setText("检查中...");
+        try {
+            String currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            UpdateChecker.checkForUpdates(currentVersion,
+                    (latestVersion, releasePageUrl, apkDownloadUrl) -> {
+                        btnCheckUpdate.setEnabled(true);
+                        btnCheckUpdate.setText("检查更新");
+                        showUpdateDialog(latestVersion, releasePageUrl, apkDownloadUrl);
+                    },
+                    () -> {
+                        btnCheckUpdate.setEnabled(true);
+                        btnCheckUpdate.setText("检查更新");
+                        Toast.makeText(this, "当前已是最新版本", Toast.LENGTH_SHORT).show();
+                    });
+        } catch (Exception e) {
+            btnCheckUpdate.setEnabled(true);
+            btnCheckUpdate.setText("检查更新");
+        }
     }
 
     /**
