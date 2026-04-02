@@ -1,5 +1,5 @@
 name: Android Smoke Test
-description: 使用 android-emulator-runner 运行最小 UI 冒烟测试
+description: 构建 APK 并使用 SrgGactionEmulatorenvsetupAndroid 在模拟器上运行冒烟测试
 
 inputs:
   cache-read-only:
@@ -22,15 +22,23 @@ runs:
         gradle-version: wrapper
         cache-read-only: ${{ inputs.cache-read-only }}
 
+    - name: Build Debug APK
+      shell: bash
+      run: |
+        chmod +x gradlew
+        ./gradlew --no-daemon assembleDebug
+
+    - name: Make smoke test script executable
+      shell: bash
+      run: chmod +x scripts/smoke-test.sh
+
     - name: Run emulator smoke test
-      uses: reactivecircus/android-emulator-runner@v2
+      uses: SweetRainGarden/SrgGactionEmulatorenvsetupAndroid@main
       with:
-        api-level: 30
+        apk-path: ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk
+        run-script-path: ./scripts/smoke-test.sh
+        api-level: "30"
         target: google_apis
         arch: x86_64
         profile: Nexus 6
-        force-avd-creation: true
-        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none -camera-front none
-        disable-animations: true
-        emulator-boot-timeout: 900
-        script: timeout 25m ./gradlew --no-daemon --stacktrace connectedDebugAndroidTest
+        emulator-boot-timeout: "900"
