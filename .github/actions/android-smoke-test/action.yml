@@ -26,7 +26,7 @@ runs:
       shell: bash
       run: |
         chmod +x gradlew
-        ./gradlew --no-daemon assembleDebug
+        ./gradlew --no-daemon -PciVersionCode=${GITHUB_RUN_NUMBER:-4} assembleDebug
 
     - name: Make smoke test script executable
       shell: bash

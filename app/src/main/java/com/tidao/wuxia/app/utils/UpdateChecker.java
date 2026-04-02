@@ -16,9 +16,14 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.tidao.wuxia.app.BuildConfig;
 
 /**
  * 检查 GitHub Releases 是否有新版本
@@ -125,6 +130,7 @@ public class UpdateChecker {
                 String tagName = json.optString("tag_name", "");
                 String releaseName = json.optString("name", "");
                 String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
+                String publishedAt = json.optString("published_at", "");
 
                 // 提取第一个 asset 的 APK 直链，供应用内下载使用
                 String apkDownloadUrl = "";
@@ -145,10 +151,20 @@ public class UpdateChecker {
                     latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                 }
 
-                if (isNewerVersion(latestVersion, currentVersion)) {
-                    Log.d(TAG, "发现新版本: " + latestVersion);
+                boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
+                // 版本号相同时，用 release 发布时间 vs 构建时间戳判断是否有更新构建
+                boolean hasNewerBuild = !hasNewerVersion
+                        && isSameVersion(latestVersion, currentVersion)
+                        && isNewerBuild(publishedAt);
+
+                if (hasNewerVersion || hasNewerBuild) {
+                    String displayVersion = hasNewerBuild
+                            ? latestVersion + "（新构建）"
+                            : latestVersion;
+                    Log.d(TAG, "发现新版本: " + displayVersion
+                            + (hasNewerBuild ? "（发布时间晚于构建时间）" : ""));
                     final String finalApkUrl = apkDownloadUrl;
-                    final String finalVersion = latestVersion;
+                    final String finalVersion = displayVersion;
                     postCallback(requestId, () ->
                             safeCallback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
                 } else {
@@ -227,6 +243,41 @@ public class UpdateChecker {
             }
             return false;
         } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断两个版本号是否完全相同（忽略 prerelease 后缀）
+     */
+    private static boolean isSameVersion(String latest, String current) {
+        try {
+            latest = latest.split("-")[0];
+            current = current.split("-")[0];
+            return latest.equals(current);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断 release 发布时间是否晚于当前 APK 的构建时间。
+     * 用于版本号相同时检测是否有更新的构建可用。
+     *
+     * @param publishedAt GitHub release 的 published_at（ISO 8601 格式）
+     * @return true 表示 release 比当前构建更新
+     */
+    private static boolean isNewerBuild(String publishedAt) {
+        if (publishedAt == null || publishedAt.isEmpty()) return false;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            long releaseTime = sdf.parse(publishedAt).getTime();
+            long buildTime = BuildConfig.BUILD_TIMESTAMP;
+            // 留 5 分钟容差，避免同一次构建的微小时间差误判
+            return releaseTime > buildTime + 300_000L;
+        } catch (Exception e) {
+            Log.d(TAG, "发布时间解析失败: " + e.getMessage());
             return false;
         }
     }

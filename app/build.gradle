@@ -10,10 +10,18 @@ android {
         applicationId "com.tidao.wuxia.app"
         minSdk 26
         targetSdk 34
-        versionCode 4
+        // CI 通过 -PciVersionCode=N 传入自增版本号；本地开发使用默认值
+        versionCode project.hasProperty('ciVersionCode') ? project.property('ciVersionCode').toInteger() : 4
         versionName "1.2.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // 构建时间戳，用于同版本号时判断 release 是否更新
+        buildConfigField "long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L"
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
