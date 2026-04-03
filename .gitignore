@@ -13,6 +13,7 @@ app/build/
 # Keystore
 *.keystore
 *.jks
+!app/debug.keystore
 
 # Test artifacts
 apks/*.apk

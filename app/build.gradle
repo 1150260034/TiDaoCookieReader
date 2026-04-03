@@ -2,6 +2,15 @@ plugins {
     id 'com.android.application'
 }
 
+def releaseStoreFile = (project.findProperty('releaseStoreFile') ?: '').toString()
+def releaseStorePassword = (project.findProperty('releaseStorePassword') ?: System.getenv('RELEASE_STORE_PASSWORD') ?: '').toString()
+def releaseKeyAlias = (project.findProperty('releaseKeyAlias') ?: System.getenv('RELEASE_KEY_ALIAS') ?: '').toString()
+def releaseKeyPassword = (project.findProperty('releaseKeyPassword') ?: System.getenv('RELEASE_KEY_PASSWORD') ?: '').toString()
+def hasReleaseSigning = !releaseStoreFile.isEmpty() &&
+    !releaseStorePassword.isEmpty() &&
+    !releaseKeyAlias.isEmpty() &&
+    !releaseKeyPassword.isEmpty()
+
 android {
     namespace 'com.tidao.wuxia.app'
     compileSdk 34
@@ -21,8 +30,35 @@ android {
         buildConfig true
     }
 
-    buildTypes {
+    signingConfigs {
+        debug {
+            // 统一本地与 CI 的 Debug 签名，避免覆盖安装时提示先卸载。
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+
         release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+
+        release {
+            // 仅在显式传入签名参数时启用 Release 签名，本地未配置时保持默认行为。
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

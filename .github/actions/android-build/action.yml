@@ -22,6 +22,22 @@ inputs:
     description: 覆盖 versionCode（留空则使用 build.gradle 默认值）
     required: false
     default: ''
+  release-keystore-base64:
+    description: Release keystore 的 Base64 内容（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-store-password:
+    description: Release keystore 密码（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-key-alias:
+    description: Release key alias（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-key-password:
+    description: Release key 密码（仅 Release 构建需要）
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -38,12 +54,60 @@ runs:
         gradle-version: ${{ inputs.gradle-version }}
         cache-read-only: ${{ inputs.cache-read-only }}
 
-    - name: Build APK
+    - name: Validate unified debug keystore
+      if: ${{ inputs.variant == 'Debug' }}
       shell: bash
       run: |
-        chmod +x gradlew
-        EXTRA_ARGS=""
-        if [ -n "${{ inputs.version-code }}" ]; then
-          EXTRA_ARGS="-PciVersionCode=${{ inputs.version-code }}"
+        if [ ! -f app/debug.keystore ]; then
+          echo "::error::缺少 app/debug.keystore，无法保证本地与 CI 的 Debug APK 签名一致。"
+          exit 1
         fi
-        ./gradlew --no-daemon $EXTRA_ARGS assemble${{ inputs.variant }}
+
+    - name: Validate release signing inputs
+      if: ${{ inputs.variant == 'Release' }}
+      shell: bash
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ inputs.release-keystore-base64 }}
+        RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
+        RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
+        RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
+      run: |
+        if [ -z "$RELEASE_KEYSTORE_BASE64" ] || \
+           [ -z "$RELEASE_STORE_PASSWORD" ] || \
+           [ -z "$RELEASE_KEY_ALIAS" ] || \
+           [ -z "$RELEASE_KEY_PASSWORD" ]; then
+          echo "::error::Release 构建缺少签名参数，请在 workflow secrets 中配置后再发布。"
+          exit 1
+        fi
+
+    - name: Prepare release keystore
+      if: ${{ inputs.variant == 'Release' }}
+      shell: bash
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ inputs.release-keystore-base64 }}
+      run: |
+        printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+
+    - name: Build APK
+      shell: bash
+      env:
+        RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
+        RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
+        RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
+      run: |
+        chmod +x gradlew
+        EXTRA_ARGS=(--no-daemon)
+        if [ -n "${{ inputs.version-code }}" ]; then
+          EXTRA_ARGS+=("-PciVersionCode=${{ inputs.version-code }}")
+        fi
+        if [ "${{ inputs.variant }}" = "Release" ]; then
+          EXTRA_ARGS+=("-PreleaseStoreFile=$PWD/release.keystore")
+        fi
+        EXTRA_ARGS+=("assemble${{ inputs.variant }}")
+        ./gradlew "${EXTRA_ARGS[@]}"
+
+    - name: Cleanup release keystore
+      if: ${{ always() && inputs.variant == 'Release' }}
+      shell: bash
+      run: |
+        rm -f release.keystore
