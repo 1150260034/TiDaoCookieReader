@@ -90,7 +90,7 @@ jobs:
           OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
           OSS_REGION: ${{ secrets.OSS_REGION }}
         run: |
-          BASE_VERSION=$(sed -n 's/.*baseVersionName *= *"\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=${{ github.event.workflow_run.run_number }}
           VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           APK_FILE="app/build/outputs/apk/debug/app-debug.apk"

@@ -32,6 +32,9 @@ public class UpdateChecker {
     // 用于从 release name 中提取构建号，如 "Build 42" -> 42
     private static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("Build\\s+(\\d+)");
 
+    // 用于从 release body 中提取 .bin 下载链接
+    private static final Pattern BIN_URL_PATTERN = Pattern.compile("https://[\\w./%-]+\\.bin");
+
     private static final String GITHUB_API_URL =
             "https://api.github.com/repos/1150260034/TiDaoCookieReader/releases/latest";
 
@@ -222,12 +225,19 @@ public class UpdateChecker {
             String tagName = json.optString("tag_name", "");
             String releaseName = json.optString("name", "");
             String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
+            String body = json.optString("body", "");
 
             // 提取第一个 asset 的 APK 直链，供应用内下载使用
             String apkDownloadUrl = "";
             JSONArray assets = json.optJSONArray("assets");
             if (assets != null && assets.length() > 0) {
                 apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
+            } else {
+                // 若 assets 为空，尝试从 body 里找 .bin 下载链接
+                Matcher m = BIN_URL_PATTERN.matcher(body);
+                if (m.find()) {
+                    apkDownloadUrl = m.group();
+                }
             }
 
             // 优先从 release name 中提取版本号（格式如 "最新版本 v1.2.3"）
@@ -243,8 +253,11 @@ public class UpdateChecker {
             }
 
             boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
-            // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
+            // 版本号相同时，比较 release name 或 body 中的构建号与本地 VERSION_CODE
             Integer remoteBuildCode = extractBuildNumber(releaseName);
+            if (remoteBuildCode == null) {
+                remoteBuildCode = extractBuildNumber(body);
+            }
             boolean hasNewerBuild = !hasNewerVersion
                     && isSameVersion(latestVersion, currentVersion)
                     && hasNewerBuildCode(remoteBuildCode);

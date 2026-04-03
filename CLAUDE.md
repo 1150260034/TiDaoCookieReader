@@ -121,7 +121,7 @@ adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
 ## CI/CD
 
 - **android-build.yml** — push 到 main/master 或 PR 时先校验 `file_paths.xml`，再构建调试 APK，并调用复用的 Android 模拟器冒烟 action 执行 `connectedDebugAndroidTest` 与主界面启动检查
-- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat` 变更时触发；发布前先校验 `file_paths.xml` 并调用同一套模拟器冒烟 action，再发布 GitHub release（tag 固定为 `latest`，非 prerelease，幂等），最后调用 `scripts/upload-oss-artifact.sh` 上传 APK 及 `version.json` 到阿里云 OSS
+- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat`、`scripts/` 变更时触发。该流程**复用**上游 CI（android-build.yml）的校验与冒烟测试结果，不会重新执行 file_paths.xml 校验或 emulator 冒烟测试，仅在主分支 CI 通过后发布 GitHub release（tag 固定为 `latest`，非 prerelease，幂等），最后调用 `scripts/upload-oss-artifact.sh` 上传 APK 及 `version.json` 到阿里云 OSS。
 - **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release，并调用同一 OSS 上传脚本发布
 - **scripts/upload-oss-artifact.sh** — 统一 OSS 上传脚本，自动规范化 `OSS_REGION` 格式（兼容 `cn-hangzhou` 和 `oss-cn-hangzhou`），安装 ossutil、上传 APK、生成并上传 `version.json`
 

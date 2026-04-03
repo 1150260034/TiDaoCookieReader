@@ -12,8 +12,12 @@ VERSION_CODE="$3"
 CHANGELOG="$4"
 
 if [ -z "${OSS_ACCESS_KEY_ID:-}" ] || [ -z "${OSS_ACCESS_KEY_SECRET:-}" ] || [ -z "${OSS_BUCKET_NAME:-}" ] || [ -z "${OSS_REGION:-}" ]; then
-  echo "OSS secrets 未配置，跳过上传步骤"
-  exit 0
+  if [ "${ALLOW_MISSING_OSS_UPLOAD:-false}" = "true" ]; then
+    echo "OSS secrets 未配置，ALLOW_MISSING_OSS_UPLOAD=true，跳过上传"
+    exit 0
+  fi
+  echo "缺少 OSS 上传所需 secrets，终止发布" >&2
+  exit 1
 fi
 
 if [ ! -f "$APK_FILE" ]; then
