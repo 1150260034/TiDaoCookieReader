@@ -41,10 +41,22 @@ TiDaoCookieReader/
 │   │   └── CookieExtractor.java      # HTTP 流量解析逻辑已不再使用，但 CookieData 仍作为公共数据结构被复用
 │   └── utils/
 │       ├── RootChecker.java          # Root 权限检测
-│       └── UpdateChecker.java        # GitHub Releases 版本检查（含 APK 直链提取）
+│       └── UpdateChecker.java        # 双源更新检查（云函数优先，回退 GitHub Releases）
 ├── app/src/main/res/
 │   ├── layout/activity_main.xml
 │   └── xml/file_paths.xml            # FileProvider 路径配置（APK 安装授权）
+├── .github/
+│   ├── actions/
+│   │   ├── android-build/            # 复用构建 action（JDK + Gradle + 签名 + BuildConfig 注入）
+│   │   └── android-smoke-test/       # 复用冒烟测试 action（模拟器 + APK 安装 + 启动检查）
+│   └── workflows/
+│       ├── android-build.yml         # CI：校验 + 构建 + 冒烟测试
+│       ├── android-publish.yml       # CD：CI 成功后发布 latest release + OSS 上传
+│       └── android-release.yml       # Release：打 tag 后构建签名 APK + OSS 上传
+├── scripts/
+│   ├── upload-oss-artifact.sh    # OSS 上传脚本（ossutil 安装 + APK/version.json 上传）
+│   ├── validate-file-paths.sh    # file_paths.xml 静态校验
+│   └── smoke-test.sh             # ADB 冒烟测试脚本
 ├── build.gradle                       # AGP 8.5.0
 └── settings.gradle                   # 使用阿里云镜像加速 Gradle 依赖
 ```
@@ -60,6 +72,7 @@ TiDaoCookieReader/
 - **BindingChecker** — 调用 AMS 登录验证接口 (FlowID 974294) 检查账号是否已绑定游戏角色。iRet=101 表示 Cookie 失效
 - **CookieExtractor** — 旧版 HTTP 流量解析器（本地代理模式），代码保留但 MainActivity 已不使用
 - **RootChecker** — 三种方式检测 Root: su 命令存在性、常见 root 路径、build.tags 含 test-keys
+- **UpdateChecker** — 双源更新检查：云函数优先（国内 CDN 加速），失败时自动回退 GitHub API。支持版本号和构建号（versionCode）两维度比较，云函数和 GitHub 通道均使用统一的 `hasNewerBuildCode()` 方法。云函数通道使用 `CLOUD_RELEASES_PAGE_URL` 作为详情页，GitHub 通道使用 release 自带的 `html_url`
 
 ### 数据流向
 
@@ -108,8 +121,16 @@ adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
 ## CI/CD
 
 - **android-build.yml** — push 到 main/master 或 PR 时先校验 `file_paths.xml`，再构建调试 APK，并调用复用的 Android 模拟器冒烟 action 执行 `connectedDebugAndroidTest` 与主界面启动检查
-- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat` 变更时触发；发布前先校验 `file_paths.xml` 并调用同一套模拟器冒烟 action，再发布 GitHub release（tag 固定为 `latest`，非 prerelease，幂等）
-- **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release
+- **android-publish.yml** — 仅当 `app/`、`build.gradle`、`settings.gradle`、`gradle.properties`、`gradle/**`、`gradlew`、`gradlew.bat` 变更时触发；发布前先校验 `file_paths.xml` 并调用同一套模拟器冒烟 action，再发布 GitHub release（tag 固定为 `latest`，非 prerelease，幂等），最后调用 `scripts/upload-oss-artifact.sh` 上传 APK 及 `version.json` 到阿里云 OSS
+- **android-release.yml** — 打 tag (`v*`) 时构建 release APK，提取 versionName/versionCode 输出到 GITHUB_OUTPUT，用 `softprops/action-gh-release` 创建 GitHub Release，并调用同一 OSS 上传脚本发布
+- **scripts/upload-oss-artifact.sh** — 统一 OSS 上传脚本，自动规范化 `OSS_REGION` 格式（兼容 `cn-hangzhou` 和 `oss-cn-hangzhou`），安装 ossutil、上传 APK、生成并上传 `version.json`
+
+### BuildConfig 注入
+
+CI 通过 `.github/actions/android-build` 复用 action 注入以下 BuildConfig 字段：
+- `API_TOKEN` — 云函数请求来源标识（有意编译进 APK，本身仅为标识用途）
+- `FC_URL` — 云函数 HTTP URL
+- `CLOUD_RELEASES_PAGE_URL` — 云端更新详情页 URL（未配置时回退到 GitHub Releases）
 
 ## 分支规范
 
