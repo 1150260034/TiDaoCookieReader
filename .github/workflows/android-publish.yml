@@ -54,6 +54,7 @@ jobs:
           variant: Debug
           cache-read-only: false
           version-code: ${{ github.event.workflow_run.run_number }}
+          api-token: ${{ secrets.API_TOKEN }}
           fc-url: ${{ secrets.FC_URL }}
           cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
 
