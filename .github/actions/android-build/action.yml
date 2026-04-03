@@ -38,6 +38,15 @@ runs:
         gradle-version: ${{ inputs.gradle-version }}
         cache-read-only: ${{ inputs.cache-read-only }}
 
+    - name: Validate unified debug keystore
+      if: ${{ inputs.variant == 'Debug' }}
+      shell: bash
+      run: |
+        if [ ! -f app/debug.keystore ]; then
+          echo "::error::缺少 app/debug.keystore，无法保证本地与 CI 的 Debug APK 签名一致。"
+          exit 1
+        fi
+
     - name: Build APK
       shell: bash
       run: |
