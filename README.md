@@ -24,6 +24,10 @@
 
 前往 [GitHub Releases](https://github.com/1150260034/TiDaoCookieReader/releases/latest) 下载最新版 APK，安装到模拟器中。
 
+> **版本号说明**：版本标识格式为 `v{versionName} (build {N})`，例如 `v1.2.2 (build 6)`。
+> 其中 `build N` 是 GitHub Actions 的全局流水线序号（`run_number`），从仓库创建起单调递增，**不会随 versionName 更新而重置**。
+> 因此同一个 versionName 可能对应多个不同的 build 号，这是正常现象，以 versionName 为准判断版本。
+
 ### 2. 使用步骤
 
 1. 打开天刀助手，扫码登录
