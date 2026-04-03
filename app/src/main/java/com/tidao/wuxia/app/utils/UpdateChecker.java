@@ -59,7 +59,7 @@ public class UpdateChecker {
     public interface UpdateCallback {
         /**
          * @param latestVersion   最新版本号，如 "1.3.0"
-         * @param releasePageUrl  版本详情页 URL（云端或 GitHub Releases，供开浏览器兆底用）
+         * @param releasePageUrl  版本详情页 URL（云端或 GitHub Releases，供打开浏览器兜底用）
          * @param apkDownloadUrl  APK 直接下载地址；assets 为空时为空字符串
          */
         void onUpdateAvailable(String latestVersion, String releasePageUrl, String apkDownloadUrl);
