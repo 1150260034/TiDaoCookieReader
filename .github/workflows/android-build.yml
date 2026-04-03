@@ -1,39 +1,21 @@
 name: Android CI
 
-# 路径白名单说明：
-# - 相比 android-publish.yml，此处额外包含 scripts/** 和 .github/** 路径，
-#   目的是在 CI 脚本或工作流定义变更时同样触发构建验证。
-# - publish 工作流不需要因 CI 配置变更而重新发布 APK，因此两者白名单有意不同。
-# - GitHub Actions 不支持 YAML 锚点，push 与 pull_request 下的 paths 只能各写一份，
-#   修改时请同步更新两处。
+# 使用 paths-ignore（排除法）而非 paths（白名单）:
+# - 新增 Android 模块或配置文件时无需手动更新此列表，自动触发 CI
+# - 排除列表远比白名单短，push 与 pull_request 两处保持一致的成本更低
+# - android-publish.yml 仍使用严格的 paths 白名单（发布不应因文档/CI 配置变更触发）
 on:
   push:
     branches:
       - main
       - master
-    paths:
-      - "app/**"
-      - "build.gradle"
-      - "settings.gradle"
-      - "gradle.properties"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
-      - "scripts/**"
-      - ".github/workflows/**"
-      - ".github/actions/**"
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
-    paths:
-      - "app/**"
-      - "build.gradle"
-      - "settings.gradle"
-      - "gradle.properties"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
-      - "scripts/**"
-      - ".github/workflows/**"
-      - ".github/actions/**"
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
