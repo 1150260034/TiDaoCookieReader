@@ -35,6 +35,11 @@ public class UpdateChecker {
     private static final String RELEASES_PAGE_URL =
             "https://github.com/1150260034/TiDaoCookieReader/releases";
 
+        private static final String CLOUD_RELEASES_PAGE_URL =
+            BuildConfig.CLOUD_RELEASES_PAGE_URL.isEmpty()
+                ? RELEASES_PAGE_URL
+                : BuildConfig.CLOUD_RELEASES_PAGE_URL;
+
     private static final int TIMEOUT_MS = 5000;
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -99,8 +104,7 @@ public class UpdateChecker {
 
         executor.execute(() -> {
             // 双源策略：云函数可用时优先尝试，失败则回退 GitHub
-            boolean cloudFunctionAvailable = !BuildConfig.API_TOKEN.isEmpty()
-                    && !BuildConfig.FC_URL.isEmpty();
+                boolean cloudFunctionAvailable = !BuildConfig.FC_URL.isEmpty();
 
             if (cloudFunctionAvailable) {
                 boolean handled = checkFromCloudFunction(
@@ -126,7 +130,6 @@ public class UpdateChecker {
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
-            conn.setRequestProperty("Authorization", "Bearer " + BuildConfig.API_TOKEN);
             conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
 
             int responseCode = conn.getResponseCode();
@@ -155,15 +158,15 @@ public class UpdateChecker {
             }
 
             boolean hasNewerVersion = isNewerVersion(remoteVersion, currentVersion);
-            boolean hasNewerBuild = !hasNewerVersion
+                boolean hasNewerBuild = !hasNewerVersion
                     && isSameVersion(remoteVersion, currentVersion)
-                    && remoteVersionCode > BuildConfig.VERSION_CODE;
+                    && hasNewerBuildCode(remoteVersionCode);
 
             if (hasNewerVersion || hasNewerBuild) {
                 Log.d(TAG, "云函数发现新版本: " + remoteVersion
                         + (hasNewerBuild ? "（构建号更高）" : ""));
                 postCallback(requestId, () ->
-                        callback.onUpdateAvailable(remoteVersion, RELEASES_PAGE_URL, downloadUrl));
+                    callback.onUpdateAvailable(remoteVersion, CLOUD_RELEASES_PAGE_URL, downloadUrl));
             } else {
                 Log.d(TAG, "云函数检查：当前已是最新版本");
                 postCallback(requestId, noUpdateCallback);
@@ -235,9 +238,10 @@ public class UpdateChecker {
 
             boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
             // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
-            boolean hasNewerBuild = !hasNewerVersion
+                Integer remoteBuildCode = extractBuildNumber(releaseName);
+                boolean hasNewerBuild = !hasNewerVersion
                     && isSameVersion(latestVersion, currentVersion)
-                    && hasNewerBuildNumber(releaseName);
+                    && hasNewerBuildCode(remoteBuildCode);
 
             if (hasNewerVersion || hasNewerBuild) {
                 Log.d(TAG, "发现新版本: " + latestVersion
@@ -347,21 +351,25 @@ public class UpdateChecker {
     }
 
     /**
-     * 从 release name 中提取构建号并与本地 VERSION_CODE 比较。
-     * release name 格式: "最新版本 v1.2.1 (Build 42)"，提取 42。
-     * 若远端构建号 > 本地 VERSION_CODE 则认为有更新。
+     * 提取远端构建号（如 "Build 42" -> 42）。解析失败返回 null。
      */
-    private static boolean hasNewerBuildNumber(String releaseName) {
-        if (releaseName == null || releaseName.isEmpty()) return false;
+    private static Integer extractBuildNumber(String source) {
+        if (source == null || source.isEmpty()) return null;
         try {
-            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(releaseName);
-            if (!m.find()) return false;
-            int remoteBuild = Integer.parseInt(m.group(1));
-            int localBuild = BuildConfig.VERSION_CODE;
-            return remoteBuild > localBuild;
+            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(source);
+            if (!m.find()) return null;
+            return Integer.parseInt(m.group(1));
         } catch (Exception e) {
             Log.d(TAG, "构建号解析失败: " + e.getMessage());
-            return false;
+            return null;
         }
+    }
+
+    /**
+     * 统一构建号比较策略：仅当远端构建号存在且大于本地 VERSION_CODE 时判定有更新。
+     */
+    private static boolean hasNewerBuildCode(Integer remoteBuildCode) {
+        if (remoteBuildCode == null) return false;
+        return remoteBuildCode > BuildConfig.VERSION_CODE;
     }
 }

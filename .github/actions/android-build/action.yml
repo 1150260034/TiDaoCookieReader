@@ -38,12 +38,12 @@ inputs:
     description: Release key 密码（仅 Release 构建需要）
     required: false
     default: ""
-  api-token:
-    description: 云函数 API Token（注入 BuildConfig.API_TOKEN）
-    required: false
-    default: ""
   fc-url:
     description: 云函数 HTTP URL（注入 BuildConfig.FC_URL）
+    required: false
+    default: ""
+  cloud-releases-page-url:
+    description: 云端更新详情页 URL（注入 BuildConfig.CLOUD_RELEASES_PAGE_URL）
     required: false
     default: ""
 
@@ -102,8 +102,8 @@ runs:
         RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
         RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
         RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
-        API_TOKEN: ${{ inputs.api-token }}
         FC_URL: ${{ inputs.fc-url }}
+        CLOUD_RELEASES_PAGE_URL: ${{ inputs.cloud-releases-page-url }}
       run: |
         chmod +x gradlew
         EXTRA_ARGS=(--no-daemon)
