@@ -21,8 +21,8 @@ jobs:
   publish:
     name: Publish Latest
     runs-on: ubuntu-latest
-    # 只在 Android CI 成功时继续
-    if: github.event.workflow_run.conclusion == 'success'
+    # 只在由 push 触发且成功的 Android CI 后继续，避免手动触发 CI 意外发版
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     permissions:
       contents: write
 
@@ -36,7 +36,12 @@ jobs:
       - name: Check if publish paths changed
         id: check-paths
         run: |
-          git diff --name-only HEAD~1 HEAD | grep -qE '^(app/|build\.gradle$|settings\.gradle$|gradle\.properties$|gradle/|gradlew$|gradlew\.bat$|scripts/)' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+          # 若无父提交（初次 commit 或浅克隆边界），保守地视为有变更
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            git diff --name-only HEAD~1 HEAD | grep -qE '^(app/|build\.gradle$|settings\.gradle$|gradle\.properties$|gradle/|gradlew$|gradlew\.bat$|scripts/)' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Android SDK
         if: steps.check-paths.outputs.changed == 'true'
@@ -54,7 +59,6 @@ jobs:
         if: steps.check-paths.outputs.changed == 'true'
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
-          VERSION_CODE=${{ github.event.workflow_run.run_number }}
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
           TAG_NAME="latest"
           APK_NAME="TiDaoCookieReader-latest.apk"

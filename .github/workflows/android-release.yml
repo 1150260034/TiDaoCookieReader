@@ -44,7 +44,7 @@ jobs:
           body: |
             ## 版本信息
 
-            - **版本号**: v${{ steps.apk_info.outputs.version_name }} (build ${{ steps.apk_info.outputs.version_code }})
+            - **版本号**: v${{ steps.apk_info.outputs.version_name }}
 
             ## 更新内容
 
