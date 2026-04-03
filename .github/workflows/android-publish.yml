@@ -58,7 +58,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
           TAG_NAME="latest"
           APK_NAME="TiDaoCookieReader-latest.apk"
-          RELEASE_NOTES="$(printf '## 最新版本 v%s\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.event.workflow_run.head_branch }}" "${SHORT_SHA}" "${{ github.event.workflow_run.updated_at }}")"
+          RELEASE_NOTES="$(printf '## 最新版本 v%s\n\n- **版本号**: v%s\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_NAME}" "${{ github.event.workflow_run.head_branch }}" "${SHORT_SHA}" "${{ github.event.workflow_run.updated_at }}")"
 
           cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
 
@@ -67,7 +67,7 @@ jobs:
 
           # 创建非 prerelease 的 latest release，确保 /releases/latest API 可见
           gh release create "${TAG_NAME}" \
-            --title "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})" \
+            --title "最新版本 v${VERSION_NAME}" \
             --notes "${RELEASE_NOTES}" \
             "app/build/outputs/apk/debug/${APK_NAME}"
         env:
