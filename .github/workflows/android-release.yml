@@ -24,6 +24,10 @@ jobs:
           variant: Release
           cache-read-only: false
           version-code: ${{ github.run_number }}
+          release-keystore-base64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          release-store-password: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          release-key-alias: ${{ secrets.RELEASE_KEY_ALIAS }}
+          release-key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Rename APK with version info
         id: apk_info

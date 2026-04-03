@@ -22,6 +22,22 @@ inputs:
     description: 覆盖 versionCode（留空则使用 build.gradle 默认值）
     required: false
     default: ''
+  release-keystore-base64:
+    description: Release keystore 的 Base64 内容（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-store-password:
+    description: Release keystore 密码（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-key-alias:
+    description: Release key alias（仅 Release 构建需要）
+    required: false
+    default: ''
+  release-key-password:
+    description: Release key 密码（仅 Release 构建需要）
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -47,6 +63,24 @@ runs:
           exit 1
         fi
 
+    - name: Validate release signing inputs
+      if: ${{ inputs.variant == 'Release' }}
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.release-keystore-base64 }}" ] || \
+           [ -z "${{ inputs.release-store-password }}" ] || \
+           [ -z "${{ inputs.release-key-alias }}" ] || \
+           [ -z "${{ inputs.release-key-password }}" ]; then
+          echo "::error::Release 构建缺少签名参数，请在 workflow secrets 中配置后再发布。"
+          exit 1
+        fi
+
+    - name: Prepare release keystore
+      if: ${{ inputs.variant == 'Release' }}
+      shell: bash
+      run: |
+        echo "${{ inputs.release-keystore-base64 }}" | base64 -d > release.keystore
+
     - name: Build APK
       shell: bash
       run: |
@@ -54,5 +88,11 @@ runs:
         EXTRA_ARGS=""
         if [ -n "${{ inputs.version-code }}" ]; then
           EXTRA_ARGS="-PciVersionCode=${{ inputs.version-code }}"
+        fi
+        if [ "${{ inputs.variant }}" = "Release" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS -PreleaseStoreFile=$PWD/release.keystore"
+          EXTRA_ARGS="$EXTRA_ARGS -PreleaseStorePassword=${{ inputs.release-store-password }}"
+          EXTRA_ARGS="$EXTRA_ARGS -PreleaseKeyAlias=${{ inputs.release-key-alias }}"
+          EXTRA_ARGS="$EXTRA_ARGS -PreleaseKeyPassword=${{ inputs.release-key-password }}"
         fi
         ./gradlew --no-daemon $EXTRA_ARGS assemble${{ inputs.variant }}

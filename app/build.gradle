@@ -2,6 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+def hasReleaseSigning = project.hasProperty('releaseStoreFile') &&
+        project.hasProperty('releaseStorePassword') &&
+        project.hasProperty('releaseKeyAlias') &&
+        project.hasProperty('releaseKeyPassword')
+
 android {
     namespace 'com.tidao.wuxia.app'
     compileSdk 34
@@ -29,6 +34,15 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(project.property('releaseStoreFile'))
+                storePassword project.property('releaseStorePassword')
+                keyAlias project.property('releaseKeyAlias')
+                keyPassword project.property('releaseKeyPassword')
+            }
+        }
     }
 
     buildTypes {
@@ -37,6 +51,10 @@ android {
         }
 
         release {
+            // 仅在显式传入签名参数时启用 Release 签名，本地未配置时保持默认行为。
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

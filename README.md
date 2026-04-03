@@ -46,6 +46,17 @@
 
 > 开发者文档请参阅 [CLAUDE.md](./CLAUDE.md)
 
+### Release 签名 Secrets
+
+`android-release.yml` 现在要求以下仓库 Secrets（缺失会直接失败）：
+
+- `RELEASE_KEYSTORE_BASE64`：release keystore 文件的 Base64 文本
+- `RELEASE_STORE_PASSWORD`：keystore 密码
+- `RELEASE_KEY_ALIAS`：签名别名
+- `RELEASE_KEY_PASSWORD`：签名 key 密码
+
+> 说明：Debug 构建继续使用仓库内统一 `app/debug.keystore`，Release 构建仅通过 Secrets 注入签名，不入库私钥。
+
 ## License
 
 MIT License
