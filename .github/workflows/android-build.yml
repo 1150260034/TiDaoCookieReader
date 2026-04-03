@@ -1,11 +1,21 @@
 name: Android CI
 
+# 使用 paths-ignore（排除法）而非 paths（白名单）:
+# - 新增 Android 模块或配置文件时无需手动更新此列表，自动触发 CI
+# - 排除列表远比白名单短，push 与 pull_request 两处保持一致的成本更低
+# - android-publish.yml 仍使用严格的 paths 白名单（发布不应因文档/CI 配置变更触发）
 on:
   push:
     branches:
       - main
       - master
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
