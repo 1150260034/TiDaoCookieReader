@@ -2,10 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
-def hasReleaseSigning = project.hasProperty('releaseStoreFile') &&
-        project.hasProperty('releaseStorePassword') &&
-        project.hasProperty('releaseKeyAlias') &&
-        project.hasProperty('releaseKeyPassword')
+def releaseStoreFile = (project.findProperty('releaseStoreFile') ?: '').toString()
+def releaseStorePassword = (project.findProperty('releaseStorePassword') ?: System.getenv('RELEASE_STORE_PASSWORD') ?: '').toString()
+def releaseKeyAlias = (project.findProperty('releaseKeyAlias') ?: System.getenv('RELEASE_KEY_ALIAS') ?: '').toString()
+def releaseKeyPassword = (project.findProperty('releaseKeyPassword') ?: System.getenv('RELEASE_KEY_PASSWORD') ?: '').toString()
+def hasReleaseSigning = !releaseStoreFile.isEmpty() &&
+    !releaseStorePassword.isEmpty() &&
+    !releaseKeyAlias.isEmpty() &&
+    !releaseKeyPassword.isEmpty()
 
 android {
     namespace 'com.tidao.wuxia.app'
@@ -37,10 +41,10 @@ android {
 
         release {
             if (hasReleaseSigning) {
-                storeFile file(project.property('releaseStoreFile'))
-                storePassword project.property('releaseStorePassword')
-                keyAlias project.property('releaseKeyAlias')
-                keyPassword project.property('releaseKeyPassword')
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
             }
         }
     }

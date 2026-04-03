@@ -66,11 +66,16 @@ runs:
     - name: Validate release signing inputs
       if: ${{ inputs.variant == 'Release' }}
       shell: bash
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ inputs.release-keystore-base64 }}
+        RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
+        RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
+        RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
       run: |
-        if [ -z "${{ inputs.release-keystore-base64 }}" ] || \
-           [ -z "${{ inputs.release-store-password }}" ] || \
-           [ -z "${{ inputs.release-key-alias }}" ] || \
-           [ -z "${{ inputs.release-key-password }}" ]; then
+        if [ -z "$RELEASE_KEYSTORE_BASE64" ] || \
+           [ -z "$RELEASE_STORE_PASSWORD" ] || \
+           [ -z "$RELEASE_KEY_ALIAS" ] || \
+           [ -z "$RELEASE_KEY_PASSWORD" ]; then
           echo "::error::Release 构建缺少签名参数，请在 workflow secrets 中配置后再发布。"
           exit 1
         fi
@@ -78,21 +83,31 @@ runs:
     - name: Prepare release keystore
       if: ${{ inputs.variant == 'Release' }}
       shell: bash
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ inputs.release-keystore-base64 }}
       run: |
-        echo "${{ inputs.release-keystore-base64 }}" | base64 -d > release.keystore
+        printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
 
     - name: Build APK
       shell: bash
+      env:
+        RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
+        RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
+        RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
       run: |
         chmod +x gradlew
-        EXTRA_ARGS=""
+        EXTRA_ARGS=(--no-daemon)
         if [ -n "${{ inputs.version-code }}" ]; then
-          EXTRA_ARGS="-PciVersionCode=${{ inputs.version-code }}"
+          EXTRA_ARGS+=("-PciVersionCode=${{ inputs.version-code }}")
         fi
         if [ "${{ inputs.variant }}" = "Release" ]; then
-          EXTRA_ARGS="$EXTRA_ARGS -PreleaseStoreFile=$PWD/release.keystore"
-          EXTRA_ARGS="$EXTRA_ARGS -PreleaseStorePassword=${{ inputs.release-store-password }}"
-          EXTRA_ARGS="$EXTRA_ARGS -PreleaseKeyAlias=${{ inputs.release-key-alias }}"
-          EXTRA_ARGS="$EXTRA_ARGS -PreleaseKeyPassword=${{ inputs.release-key-password }}"
+          EXTRA_ARGS+=("-PreleaseStoreFile=$PWD/release.keystore")
         fi
-        ./gradlew --no-daemon $EXTRA_ARGS assemble${{ inputs.variant }}
+        EXTRA_ARGS+=("assemble${{ inputs.variant }}")
+        ./gradlew "${EXTRA_ARGS[@]}"
+
+    - name: Cleanup release keystore
+      if: ${{ always() && inputs.variant == 'Release' }}
+      shell: bash
+      run: |
+        rm -f release.keystore
