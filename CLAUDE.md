@@ -38,7 +38,7 @@ TiDaoCookieReader/
 │   │   ├── WebViewCookieReader.java  # 通过 su 读取天刀助手 WebView Cookie 数据库
 │   │   ├── GameDatabaseReader.java   # 通过 su 读取游戏数据库 Role 表
 │   │   ├── BindingChecker.java       # 调用 AMS API 检测每日福利绑定状态
-│   │   └── CookieExtractor.java      # HTTP 流量解析（本地代理模式，已不使用）
+│   │   └── CookieExtractor.java      # HTTP 流量解析逻辑已不再使用，但 CookieData 仍作为公共数据结构被复用
 │   └── utils/
 │       ├── RootChecker.java          # Root 权限检测
 │       └── UpdateChecker.java        # GitHub Releases 版本检查（含 APK 直链提取）
