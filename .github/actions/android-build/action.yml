@@ -9,35 +9,43 @@ inputs:
   java-version:
     description: Java 版本
     required: false
-    default: '17'
+    default: "17"
   gradle-version:
     description: Gradle 版本，默认使用项目 wrapper 版本
     required: false
-    default: 'wrapper'
+    default: "wrapper"
   cache-read-only:
     description: Gradle 缓存是否为只读模式
     required: false
-    default: 'false'
+    default: "false"
   version-code:
     description: 覆盖 versionCode（留空则使用 build.gradle 默认值）
     required: false
-    default: ''
+    default: ""
   release-keystore-base64:
     description: Release keystore 的 Base64 内容（仅 Release 构建需要）
     required: false
-    default: ''
+    default: ""
   release-store-password:
     description: Release keystore 密码（仅 Release 构建需要）
     required: false
-    default: ''
+    default: ""
   release-key-alias:
     description: Release key alias（仅 Release 构建需要）
     required: false
-    default: ''
+    default: ""
   release-key-password:
     description: Release key 密码（仅 Release 构建需要）
     required: false
-    default: ''
+    default: ""
+  api-token:
+    description: 云函数 API Token（注入 BuildConfig.API_TOKEN）
+    required: false
+    default: ""
+  fc-url:
+    description: 云函数 HTTP URL（注入 BuildConfig.FC_URL）
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -94,6 +102,8 @@ runs:
         RELEASE_KEY_ALIAS: ${{ inputs.release-key-alias }}
         RELEASE_STORE_PASSWORD: ${{ inputs.release-store-password }}
         RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
+        API_TOKEN: ${{ inputs.api-token }}
+        FC_URL: ${{ inputs.fc-url }}
       run: |
         chmod +x gradlew
         EXTRA_ARGS=(--no-daemon)
