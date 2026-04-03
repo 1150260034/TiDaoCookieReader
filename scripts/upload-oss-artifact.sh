@@ -33,7 +33,7 @@ else
 fi
 
 ENDPOINT="${OSS_REGION_HOST}.aliyuncs.com"
-OBJECT_KEY="app-v${VERSION_NAME}.bin"
+OBJECT_KEY="app-v${VERSION_NAME}.bin.gz"
 
 # 安装 ossutil
 curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-linux-amd64.zip -o ossutil.zip
@@ -44,8 +44,10 @@ OSSUTIL="./ossutil_tmp/ossutil-v1.7.19-linux-amd64/ossutil64"
 # 配置 AK/SK
 $OSSUTIL config -e "$ENDPOINT" -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET"
 
-# 上传二进制对象
-$OSSUTIL cp "$APK_FILE" "oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}" -f
+# gzip 压缩 APK 再上传，避免 OSS 检测 APK 文件头后禁止分发
+gzip -c "$APK_FILE" > "${APK_FILE}.gz"
+$OSSUTIL cp "${APK_FILE}.gz" "oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}" \
+  --meta "Content-Type:application/gzip" -f
 echo "Artifact 已上传: oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}"
 
 # 生成并上传 version.json（用 Python 转义 CHANGELOG 确保 JSON 合法）
