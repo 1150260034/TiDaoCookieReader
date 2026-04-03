@@ -1,83 +1,68 @@
 name: Android Publish
 
+# 复用 Android CI 的冒烟测试结果，避免同一次 push 重复运行冒烟测试：
+# - android-build.yml 在 push 到 main/master 时已运行 validate 和 smoke-test
+# - 本 workflow 等待 Android CI 成功后直接执行 publish，不再重复跑冒烟测试
+# - branches 过滤确保只有 main/master 的 push 才会触发（fork PR 不会触发 publish）
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - "app/**"
-      - "build.gradle"
-      - "settings.gradle"
-      - "gradle.properties"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
-      - "scripts/**"
+  workflow_run:
+    workflows: ["Android CI"]
+    types: [completed]
+    branches: [main, master]
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  validate:
-    name: Validate Android Resources
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate file_paths.xml
-        run: |
-          chmod +x scripts/validate-file-paths.sh
-          ./scripts/validate-file-paths.sh
-
-  smoke-test:
-    name: Smoke Test Before Publish
-    runs-on: ubuntu-latest
-    needs: validate
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Run shared smoke test action
-        uses: ./.github/actions/android-smoke-test
-
   publish:
     name: Publish Latest
     runs-on: ubuntu-latest
-    needs: smoke-test
+    # 只在由 push 触发且成功的 Android CI 后继续，避免手动触发 CI 意外发版
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     permissions:
       contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Check if publish paths changed
+        id: check-paths
+        run: |
+          # 若无父提交（初次 commit 或浅克隆边界），保守地视为有变更
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            git diff --name-only HEAD~1 HEAD | grep -qE '^(app/|build\.gradle$|settings\.gradle$|gradle\.properties$|gradle/|gradlew$|gradlew\.bat$|scripts/)' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Android SDK
+        if: steps.check-paths.outputs.changed == 'true'
+        uses: android-actions/setup-android@v3
 
       - name: Build Debug APK
+        if: steps.check-paths.outputs.changed == 'true'
         uses: ./.github/actions/android-build
         with:
           variant: Debug
           cache-read-only: false
-          version-code: ${{ github.run_number }}
+          version-code: ${{ github.event.workflow_run.run_number }}
 
       - name: Publish latest release
+        if: steps.check-paths.outputs.changed == 'true'
         run: |
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
-          VERSION_CODE=${{ github.run_number }}
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
           TAG_NAME="latest"
           APK_NAME="TiDaoCookieReader-latest.apk"
-          RELEASE_NOTES="$(printf '## 最新版本 v%s\n\n- **版本号**: v%s (build %s)\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_NAME}" "${VERSION_CODE}" "${{ github.ref_name }}" "${SHORT_SHA}" "${{ github.event.head_commit.timestamp }}")"
+          RELEASE_NOTES="$(printf '## 最新版本 v%s\n\n- **版本号**: v%s\n- **构建分支**: %s\n- **提交**: %s\n- **时间**: %s' "${VERSION_NAME}" "${VERSION_NAME}" "${{ github.event.workflow_run.head_branch }}" "${SHORT_SHA}" "${{ github.event.workflow_run.updated_at }}")"
 
           cp "app/build/outputs/apk/debug/app-debug.apk" "app/build/outputs/apk/debug/${APK_NAME}"
 
@@ -86,7 +71,7 @@ jobs:
 
           # 创建非 prerelease 的 latest release，确保 /releases/latest API 可见
           gh release create "${TAG_NAME}" \
-            --title "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})" \
+            --title "最新版本 v${VERSION_NAME}" \
             --notes "${RELEASE_NOTES}" \
             "app/build/outputs/apk/debug/${APK_NAME}"
         env:
