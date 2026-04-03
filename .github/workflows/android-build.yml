@@ -1,5 +1,11 @@
 name: Android CI
 
+# 路径白名单说明：
+# - 相比 android-publish.yml，此处额外包含 scripts/** 和 .github/** 路径，
+#   目的是在 CI 脚本或工作流定义变更时同样触发构建验证。
+# - publish 工作流不需要因 CI 配置变更而重新发布 APK，因此两者白名单有意不同。
+# - GitHub Actions 不支持 YAML 锚点，push 与 pull_request 下的 paths 只能各写一份，
+#   修改时请同步更新两处。
 on:
   push:
     branches:
