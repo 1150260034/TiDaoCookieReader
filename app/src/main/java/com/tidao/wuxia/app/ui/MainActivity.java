@@ -629,13 +629,11 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         }
 
         try {
-            // 清理上次残留的文件（若外部存储可用）
+            // 清理上次残留的 APK 文件（若外部存储可用）
             File externalDir = getExternalFilesDir(null);
             if (externalDir != null) {
                 File destFile = new File(externalDir, "update.apk");
                 if (destFile.exists()) destFile.delete();
-                File gzFile = new File(externalDir, "update.apk.gz");
-                if (gzFile.exists()) gzFile.delete();
             }
 
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkDownloadUrl));
@@ -643,9 +641,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             request.setDescription("正在下载更新包，请稍候");
             request.setNotificationVisibility(
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            // OSS 上传的是 gzip 压缩后的 APK（绕过 OSS APK 分发限制）
-            request.setMimeType("application/gzip");
-            request.setDestinationInExternalFilesDir(this, null, "update.apk.gz");
+            // 通过 OSS 自定义域名（CNAME）下载，不触发 ApkDownloadForbidden
+            request.setMimeType("application/vnd.android.package-archive");
+            request.setDestinationInExternalFilesDir(this, null, "update.apk");
 
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             updateDownloadId = dm.enqueue(request);
@@ -685,7 +683,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         cursor.close();
 
                         if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            decompressAndInstall(releasePageUrl);
+                            installDownloadedApk();
                         } else {
                             appendLog("下载失败（状态码: " + status + "），请手动下载");
                             showDownloadFailedDialog(releasePageUrl);
@@ -726,53 +724,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             }
             downloadCompleteReceiver = null;
         }
-    }
-
-    /**
-     * 解压 gzip 下载文件为 APK 并触发安装
-     */
-    private void decompressAndInstall(String releasePageUrl) {
-        new Thread(() -> {
-            try {
-                File externalDir = getExternalFilesDir(null);
-                if (externalDir == null) {
-                    runOnUiThread(() -> {
-                        appendLog("无法获取外部存储目录");
-                        showDownloadFailedDialog(releasePageUrl);
-                    });
-                    return;
-                }
-                File gzFile = new File(externalDir, "update.apk.gz");
-                File apkFile = new File(externalDir, "update.apk");
-                if (!gzFile.exists()) {
-                    runOnUiThread(() -> {
-                        appendLog("下载文件不存在，请重试");
-                        showDownloadFailedDialog(releasePageUrl);
-                    });
-                    return;
-                }
-
-                // gunzip 解压
-                try (java.util.zip.GZIPInputStream gis = new java.util.zip.GZIPInputStream(
-                        new java.io.FileInputStream(gzFile));
-                     java.io.FileOutputStream fos = new java.io.FileOutputStream(apkFile)) {
-                    byte[] buf = new byte[8192];
-                    int len;
-                    while ((len = gis.read(buf)) > 0) {
-                        fos.write(buf, 0, len);
-                    }
-                }
-                gzFile.delete();
-
-                runOnUiThread(this::installDownloadedApk);
-            } catch (Exception e) {
-                Log.w(TAG, "解压更新包失败: " + e.getMessage());
-                runOnUiThread(() -> {
-                    appendLog("解压更新包失败: " + e.getMessage());
-                    showDownloadFailedDialog(releasePageUrl);
-                });
-            }
-        }).start();
     }
 
     /**

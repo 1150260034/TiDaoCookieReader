@@ -65,6 +65,7 @@ jobs:
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
           OSS_REGION: ${{ secrets.OSS_REGION }}
+          OSS_CUSTOM_DOMAIN: oss-tiandao.zyzl.link
         run: |
           VERSION_NAME="${{ steps.apk_info.outputs.version_name }}"
           VERSION_CODE="${{ steps.apk_info.outputs.version_code }}"
