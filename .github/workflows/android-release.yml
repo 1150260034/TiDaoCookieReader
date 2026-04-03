@@ -36,8 +36,9 @@ jobs:
         id: apk_info
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
           cp "$APK_PATH" "app/build/outputs/apk/release/TiDaoCookieReader-${TAG_NAME}.apk"
           echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"

@@ -29,6 +29,9 @@ import com.tidao.wuxia.app.BuildConfig;
 public class UpdateChecker {
     private static final String TAG = "UpdateChecker";
 
+    // 用于从 release name 中提取构建号，如 "Build 42" -> 42
+    private static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("Build\\s+(\\d+)");
+
     private static final String GITHUB_API_URL =
             "https://api.github.com/repos/1150260034/TiDaoCookieReader/releases/latest";
 
@@ -53,7 +56,7 @@ public class UpdateChecker {
     public interface UpdateCallback {
         /**
          * @param latestVersion   最新版本号，如 "1.3.0"
-         * @param releasePageUrl  GitHub Releases 页面地址（兜底用）
+         * @param releasePageUrl  版本详情页 URL（云端或 GitHub Releases，供开浏览器兆底用）
          * @param apkDownloadUrl  APK 直接下载地址；assets 为空时为空字符串
          */
         void onUpdateAvailable(String latestVersion, String releasePageUrl, String apkDownloadUrl);
@@ -359,7 +362,7 @@ public class UpdateChecker {
     private static Integer extractBuildNumber(String source) {
         if (source == null || source.isEmpty()) return null;
         try {
-            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(source);
+            Matcher m = BUILD_NUMBER_PATTERN.matcher(source);
             if (!m.find()) return null;
             return Integer.parseInt(m.group(1));
         } catch (Exception e) {

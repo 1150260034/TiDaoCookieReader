@@ -23,15 +23,12 @@ fi
 
 # 统一 OSS_REGION 语义：允许 cn-hangzhou 或 oss-cn-hangzhou 两种输入格式。
 if [[ "$OSS_REGION" == oss-* ]]; then
-  OSS_REGION_ID="${OSS_REGION#oss-}"
   OSS_REGION_HOST="$OSS_REGION"
 else
-  OSS_REGION_ID="$OSS_REGION"
   OSS_REGION_HOST="oss-$OSS_REGION"
 fi
 
 ENDPOINT="${OSS_REGION_HOST}.aliyuncs.com"
-DOWNLOAD_HOST="${OSS_REGION_HOST}.aliyuncs.com"
 OBJECT_KEY="app-v${VERSION_NAME}.bin"
 
 # 安装 ossutil
@@ -47,15 +44,20 @@ $OSSUTIL config -e "$ENDPOINT" -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRE
 $OSSUTIL cp "$APK_FILE" "oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}" -f
 echo "Artifact 已上传: oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}"
 
-# 生成并上传 version.json
-cat > version.json << EOF
-{
-  "version": "${VERSION_NAME}",
-  "versionCode": ${VERSION_CODE},
-  "downloadUrl": "https://${OSS_BUCKET_NAME}.${DOWNLOAD_HOST}/${OBJECT_KEY}",
-  "changelog": "${CHANGELOG}",
-  "forceUpdate": false
+# 生成并上传 version.json（用 Python 转义 CHANGELOG 确保 JSON 合法）
+export VERSION_NAME VERSION_CODE CHANGELOG OSS_BUCKET_NAME OSS_REGION_HOST OBJECT_KEY
+python3 - << 'PY'
+import json, os
+data = {
+    "version": os.environ["VERSION_NAME"],
+    "versionCode": int(os.environ["VERSION_CODE"]),
+    "downloadUrl": f'https://{os.environ["OSS_BUCKET_NAME"]}.{os.environ["OSS_REGION_HOST"]}.aliyuncs.com/{os.environ["OBJECT_KEY"]}',
+    "changelog": os.environ["CHANGELOG"],
+    "forceUpdate": False,
 }
-EOF
+with open("version.json", "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+PY
 $OSSUTIL cp version.json "oss://${OSS_BUCKET_NAME}/version.json" -f
 echo "version.json 已更新"

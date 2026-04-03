@@ -61,7 +61,9 @@ jobs:
       - name: Publish latest release
         if: steps.check-paths.outputs.changed == 'true'
         run: |
-          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
+          VERSION_CODE=${{ github.event.workflow_run.run_number }}
+          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
           TAG_NAME="latest"
           APK_NAME="TiDaoCookieReader-latest.apk"
@@ -88,8 +90,9 @@ jobs:
           OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
           OSS_REGION: ${{ secrets.OSS_REGION }}
         run: |
-          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersionName *= *"\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=${{ github.event.workflow_run.run_number }}
+          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           APK_FILE="app/build/outputs/apk/debug/app-debug.apk"
           chmod +x scripts/upload-oss-artifact.sh
           scripts/upload-oss-artifact.sh "$APK_FILE" "$VERSION_NAME" "$VERSION_CODE" "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})"
