@@ -55,7 +55,7 @@ import json, os
 data = {
     "version": os.environ["VERSION_NAME"],
     "versionCode": int(os.environ["VERSION_CODE"]),
-    "downloadUrl": f'https://{os.environ.get("OSS_CUSTOM_DOMAIN", os.environ["OSS_BUCKET_NAME"] + "." + os.environ["OSS_REGION_HOST"] + ".aliyuncs.com")}/{os.environ["OBJECT_KEY"]}',
+    "downloadUrl": f'https://{(os.environ.get("OSS_CUSTOM_DOMAIN") or "").strip().rstrip("/").removeprefix("https://").removeprefix("http://") or (os.environ["OSS_BUCKET_NAME"] + "." + os.environ["OSS_REGION_HOST"] + ".aliyuncs.com")}/{os.environ["OBJECT_KEY"]}',
     "changelog": os.environ["CHANGELOG"],
     "forceUpdate": False,
 }
