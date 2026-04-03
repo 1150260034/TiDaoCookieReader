@@ -31,6 +31,3 @@ frida-server
 # OS
 .DS_Store
 Thumbs.db
-
-# Local private workspace (never commit)
-.private/

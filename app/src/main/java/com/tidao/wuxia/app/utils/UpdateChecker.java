@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.tidao.wuxia.app.BuildConfig;
 
 /**
- * 检查 GitHub Releases 或阿里云云函数是否有新版本。
- * 双源策略：云函数优先（国内 CDN 加速），失败时自动回退 GitHub API。
+ * 检查 GitHub Releases 是否有新版本
  */
 public class UpdateChecker {
     private static final String TAG = "UpdateChecker";
@@ -98,166 +97,83 @@ public class UpdateChecker {
         activeContext = context;
 
         executor.execute(() -> {
-            // 双源策略：云函数可用时优先尝试，失败则回退 GitHub
-            boolean cloudFunctionAvailable = !BuildConfig.API_TOKEN.isEmpty()
-                    && !BuildConfig.FC_URL.isEmpty();
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(GITHUB_API_URL);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(TIMEOUT_MS);
+                conn.setReadTimeout(TIMEOUT_MS);
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
+                conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
 
-            if (cloudFunctionAvailable) {
-                boolean handled = checkFromCloudFunction(
-                        requestId, currentVersion, safeCallback, safeNoUpdateCallback);
-                if (handled) return;
-                Log.d(TAG, "云函数不可用，回退 GitHub API");
-            }
-
-            checkFromGitHub(requestId, currentVersion, safeCallback, safeNoUpdateCallback);
-        });
-    }
-
-    /**
-     * 通过阿里云云函数检查更新（国内高速通道）。
-     * 返回 true 表示已成功处理（无论有无更新），false 表示请求失败需回退。
-     */
-    private static boolean checkFromCloudFunction(long requestId, String currentVersion,
-                                                   UpdateCallback callback, Runnable noUpdateCallback) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(BuildConfig.FC_URL);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(TIMEOUT_MS);
-            conn.setReadTimeout(TIMEOUT_MS);
-            conn.setRequestProperty("Authorization", "Bearer " + BuildConfig.API_TOKEN);
-            conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                Log.d(TAG, "云函数返回 " + responseCode + "，将回退 GitHub");
-                return false;
-            }
-
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line);
-                }
-            }
-
-            JSONObject json = new JSONObject(sb.toString());
-            String remoteVersion = json.optString("version", "");
-            int remoteVersionCode = json.optInt("versionCode", 0);
-            String downloadUrl = json.optString("downloadUrl", "");
-
-            if (remoteVersion.isEmpty()) {
-                Log.d(TAG, "云函数返回的版本号为空，将回退 GitHub");
-                return false;
-            }
-
-            boolean hasNewerVersion = isNewerVersion(remoteVersion, currentVersion);
-            boolean hasNewerBuild = !hasNewerVersion
-                    && isSameVersion(remoteVersion, currentVersion)
-                    && remoteVersionCode > BuildConfig.VERSION_CODE;
-
-            if (hasNewerVersion || hasNewerBuild) {
-                Log.d(TAG, "云函数发现新版本: " + remoteVersion
-                        + (hasNewerBuild ? "（构建号更高）" : ""));
-                postCallback(requestId, () ->
-                        callback.onUpdateAvailable(remoteVersion, RELEASES_PAGE_URL, downloadUrl));
-            } else {
-                Log.d(TAG, "云函数检查：当前已是最新版本");
-                postCallback(requestId, noUpdateCallback);
-            }
-            return true;
-
-        } catch (Exception e) {
-            Log.d(TAG, "云函数请求失败: " + e.getMessage());
-            return false;
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
-    }
-
-    /**
-     * 通过 GitHub API 检查更新（兜底通道）
-     */
-    private static void checkFromGitHub(long requestId, String currentVersion,
-                                         UpdateCallback safeCallback, Runnable safeNoUpdateCallback) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(GITHUB_API_URL);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(TIMEOUT_MS);
-            conn.setReadTimeout(TIMEOUT_MS);
-            conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-            conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
-                postCallback(requestId, safeNoUpdateCallback);
-                return;
-            }
-
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line);
-                }
-            }
-
-            JSONObject json = new JSONObject(sb.toString());
-            String tagName = json.optString("tag_name", "");
-            String releaseName = json.optString("name", "");
-            String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
-
-            // 提取第一个 asset 的 APK 直链，供应用内下载使用
-            String apkDownloadUrl = "";
-            JSONArray assets = json.optJSONArray("assets");
-            if (assets != null && assets.length() > 0) {
-                apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
-            }
-
-            // 优先从 release name 中提取版本号（格式如 "最新版本 v1.2.3"）
-            // CI 使用固定 tag `latest`，tag_name 不含有效版本，需从 name 中解析
-            String latestVersion = extractVersionFromName(releaseName);
-            if (latestVersion == null) {
-                // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
-                if (tagName.isEmpty()) {
+                int responseCode = conn.getResponseCode();
+                if (responseCode != 200) {
+                    Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
                     postCallback(requestId, safeNoUpdateCallback);
                     return;
                 }
-                latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
-            }
 
-            boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
-            // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
-            boolean hasNewerBuild = !hasNewerVersion
-                    && isSameVersion(latestVersion, currentVersion)
-                    && hasNewerBuildNumber(releaseName);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                }
 
-            if (hasNewerVersion || hasNewerBuild) {
-                Log.d(TAG, "发现新版本: " + latestVersion
-                        + (hasNewerBuild ? "（构建号更高）" : ""));
-                final String finalApkUrl = apkDownloadUrl;
-                final String finalVersion = latestVersion;
-                postCallback(requestId, () ->
-                        safeCallback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
-            } else {
-                Log.d(TAG, "当前已是最新版本");
+                JSONObject json = new JSONObject(sb.toString());
+                String tagName = json.optString("tag_name", "");
+                String releaseName = json.optString("name", "");
+                String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
+                String publishedAt = json.optString("published_at", "");
+
+                // 提取第一个 asset 的 APK 直链，供应用内下载使用
+                String apkDownloadUrl = "";
+                JSONArray assets = json.optJSONArray("assets");
+                if (assets != null && assets.length() > 0) {
+                    apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
+                }
+
+                // 优先从 release name 中提取版本号（格式如 "最新版本 v1.2.3"）
+                // CI 使用固定 tag `latest`，tag_name 不含有效版本，需从 name 中解析
+                String latestVersion = extractVersionFromName(releaseName);
+                if (latestVersion == null) {
+                    // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
+                    if (tagName.isEmpty()) {
+                        postCallback(requestId, safeNoUpdateCallback);
+                        return;
+                    }
+                    latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
+                }
+
+                boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
+                // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
+                boolean hasNewerBuild = !hasNewerVersion
+                        && isSameVersion(latestVersion, currentVersion)
+                        && hasNewerBuildNumber(releaseName);
+
+                if (hasNewerVersion || hasNewerBuild) {
+                    Log.d(TAG, "发现新版本: " + latestVersion
+                            + (hasNewerBuild ? "（构建号更高）" : ""));
+                    final String finalApkUrl = apkDownloadUrl;
+                    final String finalVersion = latestVersion;
+                    postCallback(requestId, () ->
+                            safeCallback.onUpdateAvailable(finalVersion, htmlUrl, finalApkUrl));
+                } else {
+                    Log.d(TAG, "当前已是最新版本");
+                    postCallback(requestId, safeNoUpdateCallback);
+                }
+
+            } catch (Exception e) {
+                // 网络不通或解析失败，静默忽略，不影响正常使用
+                Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
                 postCallback(requestId, safeNoUpdateCallback);
+            } finally {
+                if (conn != null) conn.disconnect();
             }
-
-        } catch (Exception e) {
-            // 网络不通或解析失败，静默忽略，不影响正常使用
-            Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
-            postCallback(requestId, safeNoUpdateCallback);
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
+        });
     }
 
     /**
