@@ -29,11 +29,23 @@ import com.tidao.wuxia.app.BuildConfig;
 public class UpdateChecker {
     private static final String TAG = "UpdateChecker";
 
+    // 用于从 release name 中提取构建号，如 "Build 42" -> 42
+    private static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("Build\\s+(\\d+)");
+
+    // 用于从 release body 中提取 .bin 下载链接
+    private static final Pattern BIN_URL_PATTERN = Pattern.compile("https://[\\w./%-]+\\.bin");
+
     private static final String GITHUB_API_URL =
             "https://api.github.com/repos/1150260034/TiDaoCookieReader/releases/latest";
 
     private static final String RELEASES_PAGE_URL =
             "https://github.com/1150260034/TiDaoCookieReader/releases";
+
+    // 云端更新详情页：CI 构建时注入，未配置时回退到 GitHub Releases 页面
+    private static final String CLOUD_RELEASES_PAGE_URL =
+            BuildConfig.CLOUD_RELEASES_PAGE_URL.isEmpty()
+                    ? RELEASES_PAGE_URL
+                    : BuildConfig.CLOUD_RELEASES_PAGE_URL;
 
     private static final int TIMEOUT_MS = 5000;
 
@@ -47,7 +59,7 @@ public class UpdateChecker {
     public interface UpdateCallback {
         /**
          * @param latestVersion   最新版本号，如 "1.3.0"
-         * @param releasePageUrl  GitHub Releases 页面地址（兜底用）
+         * @param releasePageUrl  版本详情页 URL（云端或 GitHub Releases，供打开浏览器兜底用）
          * @param apkDownloadUrl  APK 直接下载地址；assets 为空时为空字符串
          */
         void onUpdateAvailable(String latestVersion, String releasePageUrl, String apkDownloadUrl);
@@ -157,13 +169,13 @@ public class UpdateChecker {
             boolean hasNewerVersion = isNewerVersion(remoteVersion, currentVersion);
             boolean hasNewerBuild = !hasNewerVersion
                     && isSameVersion(remoteVersion, currentVersion)
-                    && remoteVersionCode > BuildConfig.VERSION_CODE;
+                    && hasNewerBuildCode(remoteVersionCode);
 
             if (hasNewerVersion || hasNewerBuild) {
                 Log.d(TAG, "云函数发现新版本: " + remoteVersion
                         + (hasNewerBuild ? "（构建号更高）" : ""));
                 postCallback(requestId, () ->
-                        callback.onUpdateAvailable(remoteVersion, RELEASES_PAGE_URL, downloadUrl));
+                        callback.onUpdateAvailable(remoteVersion, CLOUD_RELEASES_PAGE_URL, downloadUrl));
             } else {
                 Log.d(TAG, "云函数检查：当前已是最新版本");
                 postCallback(requestId, noUpdateCallback);
@@ -213,12 +225,19 @@ public class UpdateChecker {
             String tagName = json.optString("tag_name", "");
             String releaseName = json.optString("name", "");
             String htmlUrl = json.optString("html_url", RELEASES_PAGE_URL);
+            String body = json.optString("body", "");
 
             // 提取第一个 asset 的 APK 直链，供应用内下载使用
             String apkDownloadUrl = "";
             JSONArray assets = json.optJSONArray("assets");
             if (assets != null && assets.length() > 0) {
                 apkDownloadUrl = assets.getJSONObject(0).optString("browser_download_url", "");
+            } else {
+                // 若 assets 为空，尝试从 body 里找 .bin 下载链接
+                Matcher m = BIN_URL_PATTERN.matcher(body);
+                if (m.find()) {
+                    apkDownloadUrl = m.group();
+                }
             }
 
             // 优先从 release name 中提取版本号（格式如 "最新版本 v1.2.3"）
@@ -234,10 +253,14 @@ public class UpdateChecker {
             }
 
             boolean hasNewerVersion = isNewerVersion(latestVersion, currentVersion);
-            // 版本号相同时，比较 release name 中的构建号与本地 VERSION_CODE
+            // 版本号相同时，比较 release name 或 body 中的构建号与本地 VERSION_CODE
+            Integer remoteBuildCode = extractBuildNumber(releaseName);
+            if (remoteBuildCode == null) {
+                remoteBuildCode = extractBuildNumber(body);
+            }
             boolean hasNewerBuild = !hasNewerVersion
                     && isSameVersion(latestVersion, currentVersion)
-                    && hasNewerBuildNumber(releaseName);
+                    && hasNewerBuildCode(remoteBuildCode);
 
             if (hasNewerVersion || hasNewerBuild) {
                 Log.d(TAG, "发现新版本: " + latestVersion
@@ -347,21 +370,25 @@ public class UpdateChecker {
     }
 
     /**
-     * 从 release name 中提取构建号并与本地 VERSION_CODE 比较。
-     * release name 格式: "最新版本 v1.2.1 (Build 42)"，提取 42。
-     * 若远端构建号 > 本地 VERSION_CODE 则认为有更新。
+     * 提取远端构建号（如 "Build 42" -> 42）。解析失败返回 null。
      */
-    private static boolean hasNewerBuildNumber(String releaseName) {
-        if (releaseName == null || releaseName.isEmpty()) return false;
+    private static Integer extractBuildNumber(String source) {
+        if (source == null || source.isEmpty()) return null;
         try {
-            Matcher m = Pattern.compile("Build\\s+(\\d+)").matcher(releaseName);
-            if (!m.find()) return false;
-            int remoteBuild = Integer.parseInt(m.group(1));
-            int localBuild = BuildConfig.VERSION_CODE;
-            return remoteBuild > localBuild;
+            Matcher m = BUILD_NUMBER_PATTERN.matcher(source);
+            if (!m.find()) return null;
+            return Integer.parseInt(m.group(1));
         } catch (Exception e) {
             Log.d(TAG, "构建号解析失败: " + e.getMessage());
-            return false;
+            return null;
         }
+    }
+
+    /**
+     * 统一构建号比较策略：仅当远端构建号存在且大于本地 VERSION_CODE 时判定有更新。
+     */
+    private static boolean hasNewerBuildCode(Integer remoteBuildCode) {
+        if (remoteBuildCode == null) return false;
+        return remoteBuildCode > BuildConfig.VERSION_CODE;
     }
 }

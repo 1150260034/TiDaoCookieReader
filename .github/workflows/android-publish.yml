@@ -56,11 +56,14 @@ jobs:
           version-code: ${{ github.event.workflow_run.run_number }}
           api-token: ${{ secrets.API_TOKEN }}
           fc-url: ${{ secrets.FC_URL }}
+          cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
 
       - name: Publish latest release
         if: steps.check-paths.outputs.changed == 'true'
         run: |
-          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
+          VERSION_CODE=${{ github.event.workflow_run.run_number }}
+          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
           TAG_NAME="latest"
           APK_NAME="TiDaoCookieReader-latest.apk"
@@ -87,38 +90,9 @@ jobs:
           OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
           OSS_REGION: ${{ secrets.OSS_REGION }}
         run: |
-          if [ -z "$OSS_ACCESS_KEY_ID" ] || [ -z "$OSS_ACCESS_KEY_SECRET" ] || [ -z "$OSS_BUCKET_NAME" ] || [ -z "$OSS_REGION" ]; then
-            echo "OSS secrets 未配置，跳过上传步骤"
-            exit 0
-          fi
-
-          # 安装 ossutil
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-linux-amd64.zip -o ossutil.zip
-          unzip -q ossutil.zip -d ossutil_tmp
-          chmod +x ossutil_tmp/ossutil-v1.7.19-linux-amd64/ossutil64
-          OSSUTIL="./ossutil_tmp/ossutil-v1.7.19-linux-amd64/ossutil64"
-
-          # 配置 AK/SK
-          $OSSUTIL config -e "oss-${OSS_REGION#oss-}.aliyuncs.com" -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET"
-
-          VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
+          BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=${{ github.event.workflow_run.run_number }}
+          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
           APK_FILE="app/build/outputs/apk/debug/app-debug.apk"
-          OSS_APK_KEY="app-v${VERSION_NAME}.bin"
-
-          # 上传 APK
-          $OSSUTIL cp "$APK_FILE" "oss://${OSS_BUCKET_NAME}/${OSS_APK_KEY}" -f
-          echo "APK 已上传: oss://${OSS_BUCKET_NAME}/${OSS_APK_KEY}"
-
-          # 生成并上传 version.json
-          cat > version.json << EOF
-          {
-            "version": "${VERSION_NAME}",
-            "versionCode": ${VERSION_CODE},
-            "downloadUrl": "https://${OSS_BUCKET_NAME}.${OSS_REGION}.aliyuncs.com/${OSS_APK_KEY}",
-            "changelog": "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})",
-            "forceUpdate": false
-          }
-          EOF
-          $OSSUTIL cp version.json "oss://${OSS_BUCKET_NAME}/version.json" -f
-          echo "version.json 已更新"
+          chmod +x scripts/upload-oss-artifact.sh
+          scripts/upload-oss-artifact.sh "$APK_FILE" "$VERSION_NAME" "$VERSION_CODE" "最新版本 v${VERSION_NAME} (Build ${VERSION_CODE})"

@@ -21,13 +21,18 @@ android {
         targetSdk 34
         // CI 通过 -PciVersionCode=N 传入自增版本号；本地开发使用默认值
         versionCode project.hasProperty('ciVersionCode') ? project.property('ciVersionCode').toInteger() : 4
-        versionName "1.2.2"
+        // CI 构建时 patch 版本号 = run_number，保证每次发版版本号自增
+        def baseVersion = "1.2"
+        versionName project.hasProperty('ciVersionCode') ? "${baseVersion}.${project.property('ciVersionCode')}" : "${baseVersion}.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // 云函数更新检查：CI 构建时通过环境变量注入，本地开发为空串（自动走 GitHub 通道）
+        // 注意：API_TOKEN 有意编译进 APK。云函数本身就是公开服务（返回最新版本信息），
+        // 此 Token 仅用于基础的请求来源标识，不承担访问控制职责，无需保密。
         buildConfigField "String", "API_TOKEN", "\"${System.getenv('API_TOKEN') ?: ''}\""
         buildConfigField "String", "FC_URL", "\"${System.getenv('FC_URL') ?: ''}\""
+        buildConfigField "String", "CLOUD_RELEASES_PAGE_URL", "\"${System.getenv('CLOUD_RELEASES_PAGE_URL') ?: ''}\""
     }
 
     buildFeatures {

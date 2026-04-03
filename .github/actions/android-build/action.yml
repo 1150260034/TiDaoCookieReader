@@ -39,11 +39,15 @@ inputs:
     required: false
     default: ""
   api-token:
-    description: 云函数 API Token（注入 BuildConfig.API_TOKEN）
+    description: 云函数 API Token（注入 BuildConfig.API_TOKEN，仅用于请求来源标识）
     required: false
     default: ""
   fc-url:
     description: 云函数 HTTP URL（注入 BuildConfig.FC_URL）
+    required: false
+    default: ""
+  cloud-releases-page-url:
+    description: 云端更新详情页 URL（注入 BuildConfig.CLOUD_RELEASES_PAGE_URL）
     required: false
     default: ""
 
@@ -104,6 +108,7 @@ runs:
         RELEASE_KEY_PASSWORD: ${{ inputs.release-key-password }}
         API_TOKEN: ${{ inputs.api-token }}
         FC_URL: ${{ inputs.fc-url }}
+        CLOUD_RELEASES_PAGE_URL: ${{ inputs.cloud-releases-page-url }}
       run: |
         chmod +x gradlew
         EXTRA_ARGS=(--no-daemon)
