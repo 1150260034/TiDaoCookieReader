@@ -89,6 +89,7 @@ jobs:
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           OSS_BUCKET_NAME: ${{ secrets.OSS_BUCKET_NAME }}
           OSS_REGION: ${{ secrets.OSS_REGION }}
+          OSS_CUSTOM_DOMAIN: oss-tiandao.zyzl.link
         run: |
           BASE_VERSION=$(sed -n 's/.*baseVersion *= *"\([^"]*\)".*/\1/p' app/build.gradle)
           VERSION_CODE=${{ github.event.workflow_run.run_number }}

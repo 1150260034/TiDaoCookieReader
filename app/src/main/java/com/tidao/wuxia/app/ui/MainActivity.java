@@ -641,9 +641,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             request.setDescription("正在下载更新包，请稍候");
             request.setNotificationVisibility(
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            // 显式声明 MIME 类型为 APK，确保 OSS 上 .bin 后缀的下载也能被正确识别和安装
+            // 通过 OSS 自定义域名（CNAME）下载，不触发 ApkDownloadForbidden
             request.setMimeType("application/vnd.android.package-archive");
-            // 使用外部文件目录作为下载目标路径，避免直接依赖 getExternalFilesDir(null) 的非空返回
             request.setDestinationInExternalFilesDir(this, null, "update.apk");
 
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);

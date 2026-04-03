@@ -33,7 +33,7 @@ else
 fi
 
 ENDPOINT="${OSS_REGION_HOST}.aliyuncs.com"
-OBJECT_KEY="app-v${VERSION_NAME}.bin"
+OBJECT_KEY="app-v${VERSION_NAME}.apk"
 
 # 安装 ossutil
 curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-linux-amd64.zip -o ossutil.zip
@@ -44,18 +44,18 @@ OSSUTIL="./ossutil_tmp/ossutil-v1.7.19-linux-amd64/ossutil64"
 # 配置 AK/SK
 $OSSUTIL config -e "$ENDPOINT" -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET"
 
-# 上传二进制对象
+# 通过自定义域名（CNAME）分发 APK，不触发 OSS ApkDownloadForbidden 限制
 $OSSUTIL cp "$APK_FILE" "oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}" -f
 echo "Artifact 已上传: oss://${OSS_BUCKET_NAME}/${OBJECT_KEY}"
 
 # 生成并上传 version.json（用 Python 转义 CHANGELOG 确保 JSON 合法）
-export VERSION_NAME VERSION_CODE CHANGELOG OSS_BUCKET_NAME OSS_REGION_HOST OBJECT_KEY
+export VERSION_NAME VERSION_CODE CHANGELOG OSS_BUCKET_NAME OSS_REGION_HOST OBJECT_KEY OSS_CUSTOM_DOMAIN
 python3 - << 'PY'
 import json, os
 data = {
     "version": os.environ["VERSION_NAME"],
     "versionCode": int(os.environ["VERSION_CODE"]),
-    "downloadUrl": f'https://{os.environ["OSS_BUCKET_NAME"]}.{os.environ["OSS_REGION_HOST"]}.aliyuncs.com/{os.environ["OBJECT_KEY"]}',
+    "downloadUrl": f'https://{os.environ.get("OSS_CUSTOM_DOMAIN", os.environ["OSS_BUCKET_NAME"] + "." + os.environ["OSS_REGION_HOST"] + ".aliyuncs.com")}/{os.environ["OBJECT_KEY"]}',
     "changelog": os.environ["CHANGELOG"],
     "forceUpdate": False,
 }
