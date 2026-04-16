@@ -50,6 +50,10 @@ inputs:
     description: 云端更新详情页 URL（注入 BuildConfig.CLOUD_RELEASES_PAGE_URL）
     required: false
     default: ""
+  upload-cookie-url:
+    description: upload-cookie 云函数 URL（注入 BuildConfig.UPLOAD_COOKIE_URL）
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -109,6 +113,7 @@ runs:
         API_TOKEN: ${{ inputs.api-token }}
         FC_URL: ${{ inputs.fc-url }}
         CLOUD_RELEASES_PAGE_URL: ${{ inputs.cloud-releases-page-url }}
+        UPLOAD_COOKIE_URL: ${{ inputs.upload-cookie-url }}
       run: |
         chmod +x gradlew
         EXTRA_ARGS=(--no-daemon)
