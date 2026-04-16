@@ -858,7 +858,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         }
 
         String uploadUrl = BuildConfig.UPLOAD_COOKIE_URL;
-        if (uploadUrl == null || uploadUrl.isEmpty()) uploadUrl = BuildConfig.FC_URL;
         String authToken = BuildConfig.API_TOKEN;
         if (uploadUrl == null || uploadUrl.isEmpty()) {
             Toast.makeText(this, "未配置上传地址，请使用 CI 构建版本", Toast.LENGTH_LONG).show();
@@ -867,9 +866,12 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
         SharedPreferences prefs = getSharedPreferences("upload_config", MODE_PRIVATE);
         if (!prefs.getBoolean("sckey_configured", false)) {
-            final String finalUploadUrl = uploadUrl;
-            final String finalAuthToken = authToken;
             showScKeyConfigDialog(() -> uploadToCloud());
+            return;
+        }
+
+        if (roleInfo == null) {
+            Toast.makeText(this, "角色信息为空，请重新读取", Toast.LENGTH_SHORT).show();
             return;
         }
 

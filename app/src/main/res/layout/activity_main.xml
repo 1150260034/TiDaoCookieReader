@@ -1,43 +1,163 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1a1a2e" android:padding="16dp" tools:context=".ui.MainActivity">
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1a1a2e"
+    android:padding="16dp"
+    tools:context=".ui.MainActivity">
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <!-- 标题 -->
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="天刀助手 Cookie + 角色信息" android:textColor="#ffffff" android:textSize="22sp" android:textStyle="bold" android:gravity="center" android:layout_marginBottom="4dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"
+            android:text="天刀助手 Cookie + 角色信息"
+            android:textColor="#ffffff"
+            android:textSize="22sp"
+            android:textStyle="bold" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="一键提取Cookie+角色信息" android:textColor="#888888" android:textSize="13sp" android:gravity="center" android:layout_marginBottom="4dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"
+            android:text="一键提取Cookie+角色信息"
+            android:textColor="#888888"
+            android:textSize="13sp" />
 
-        <TextView android:id="@+id/tv_version" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="v1.1.0" android:textColor="#666666" android:textSize="11sp" android:gravity="center" android:layout_marginBottom="16dp" />
+        <TextView
+            android:id="@+id/tv_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginBottom="16dp"
+            android:text="v1.1.0"
+            android:textColor="#666666"
+            android:textSize="11sp" />
 
         <!-- 状态显示 -->
-        <TextView android:id="@+id/tv_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="准备就绪" android:textColor="#00ff88" android:textSize="16sp" android:gravity="center" android:background="#2d2d44" android:padding="12dp" android:layout_marginBottom="12dp" />
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#2d2d44"
+            android:gravity="center"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"
+            android:text="准备就绪"
+            android:textColor="#00ff88"
+            android:textSize="16sp" />
 
         <!-- 按钮区域 -->
-        <Button android:id="@+id/btn_install_tiandao" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="安装天刀助手" android:textColor="#ffffff" android:backgroundTint="#888888" android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btn_install_tiandao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#888888"
+            android:layout_marginBottom="8dp"
+            android:text="安装天刀助手"
+            android:textColor="#ffffff" />
 
-        <Button android:id="@+id/btn_open_tiandao" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="① 打开天刀助手" android:textColor="#ffffff" android:backgroundTint="#ff8800" android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btn_open_tiandao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#ff8800"
+            android:layout_marginBottom="8dp"
+            android:text="① 打开天刀助手"
+            android:textColor="#ffffff" />
 
-        <Button android:id="@+id/btn_read_cookie" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="② 读取当前Cookie" android:textColor="#ffffff" android:backgroundTint="#aa44ff" android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btn_read_cookie"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#aa44ff"
+            android:layout_marginBottom="8dp"
+            android:text="② 读取当前Cookie"
+            android:textColor="#ffffff" />
 
-        <Button android:id="@+id/btn_copy_all" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="③ 复制全部" android:textColor="#ffffff" android:backgroundTint="#0088ff" android:enabled="false" android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btn_copy_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#0088ff"
+            android:enabled="false"
+            android:layout_marginBottom="8dp"
+            android:text="③ 复制全部"
+            android:textColor="#ffffff" />
 
-        <Button android:id="@+id/btn_upload_cloud" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="④ 上传到云端" android:textColor="#ffffff" android:backgroundTint="#00aa66" android:enabled="false" android:layout_marginBottom="8dp" />
+        <Button
+            android:id="@+id/btn_upload_cloud"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#00aa66"
+            android:enabled="false"
+            android:layout_marginBottom="8dp"
+            android:text="④ 上传到云端"
+            android:textColor="#ffffff" />
 
-        <Button android:id="@+id/btn_check_update" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/check_update" android:textColor="#cccccc" android:backgroundTint="#334455" android:layout_marginBottom="16dp" />
+        <Button
+            android:id="@+id/btn_check_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#334455"
+            android:layout_marginBottom="16dp"
+            android:text="@string/check_update"
+            android:textColor="#cccccc" />
 
         <!-- 使用教程 -->
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="使用步骤" android:textColor="#ffffff" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="使用步骤"
+            android:textColor="#ffffff"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="1. 首次：点「安装天刀助手」下载\n2. 点击「①打开天刀助手」\n3. 在天刀助手中扫码登录QQ\n4. 点击「周周载愿」按钮\n5. 切回本App，点「②读取Cookie」\n6. 自动读取Cookie+角色信息\n7. 点击「③复制全部」" android:textColor="#aaaaaa" android:textSize="12sp" android:lineSpacingExtra="4dp" android:padding="12dp" android:background="#2d2d44" android:layout_marginBottom="12dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#2d2d44"
+            android:layout_marginBottom="12dp"
+            android:lineSpacingExtra="4dp"
+            android:padding="12dp"
+            android:text="1. 首次：点「安装天刀助手」下载\n2. 点击「①打开天刀助手」\n3. 在天刀助手中扫码登录QQ\n4. 点击「周周载愿」按钮\n5. 切回本App，点「②读取Cookie」\n6. 自动读取Cookie+角色信息\n7. 点击「③复制全部」"
+            android:textColor="#aaaaaa"
+            android:textSize="12sp" />
 
         <!-- 日志区域 -->
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="操作日志:" android:textColor="#ffffff" android:textSize="12sp" android:layout_marginBottom="4dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="操作日志:"
+            android:textColor="#ffffff"
+            android:textSize="12sp" />
 
-        <ScrollView android:id="@+id/scroll_log" android:layout_width="match_parent" android:layout_height="200dp" android:background="#2d2d44" android:padding="8dp">
+        <ScrollView
+            android:id="@+id/scroll_log"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#2d2d44"
+            android:padding="8dp">
 
-            <TextView android:id="@+id/tv_log" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:textColor="#00ff88" android:textSize="10sp" android:fontFamily="monospace" />
+            <TextView
+                android:id="@+id/tv_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text=""
+                android:textColor="#00ff88"
+                android:textSize="10sp" />
 
         </ScrollView>
 
