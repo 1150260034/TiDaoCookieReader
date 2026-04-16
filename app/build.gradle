@@ -33,6 +33,7 @@ android {
         buildConfigField "String", "API_TOKEN", "\"${System.getenv('API_TOKEN') ?: ''}\""
         buildConfigField "String", "FC_URL", "\"${System.getenv('FC_URL') ?: ''}\""
         buildConfigField "String", "CLOUD_RELEASES_PAGE_URL", "\"${System.getenv('CLOUD_RELEASES_PAGE_URL') ?: ''}\""
+        buildConfigField "String", "UPLOAD_COOKIE_URL", "\"${System.getenv('UPLOAD_COOKIE_URL') ?: ''}\""
     }
 
     buildFeatures {

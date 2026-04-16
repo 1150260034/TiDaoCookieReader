@@ -31,6 +31,7 @@ jobs:
           api-token: ${{ secrets.API_TOKEN }}
           fc-url: ${{ secrets.FC_URL }}
           cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
+          upload-cookie-url: ${{ secrets.UPLOAD_COOKIE_URL }}
 
       - name: Rename APK with version info
         id: apk_info

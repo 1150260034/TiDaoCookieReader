@@ -36,6 +36,7 @@ public class AutomationReceiver extends BroadcastReceiver {
     public static final String ACTION_COPY_ALL = ACTION_PREFIX + "COPY_ALL";
     public static final String ACTION_CHECK_WELFARE = ACTION_PREFIX + "CHECK_WELFARE";
     public static final String ACTION_GET_STATUS = ACTION_PREFIX + "GET_STATUS";
+    public static final String ACTION_UPLOAD_COOKIE = ACTION_PREFIX + "UPLOAD_COOKIE";
 
     // 单例访问接口
     private static AutomationListener listener;
@@ -48,6 +49,7 @@ public class AutomationReceiver extends BroadcastReceiver {
         void performReadCookie();
         void performCopyAll();
         void performCheckWelfare();
+        void performUploadCookie();
     }
 
     public static void setListener(AutomationListener l) {
@@ -67,6 +69,7 @@ public class AutomationReceiver extends BroadcastReceiver {
         filter.addAction(ACTION_COPY_ALL);
         filter.addAction(ACTION_CHECK_WELFARE);
         filter.addAction(ACTION_GET_STATUS);
+        filter.addAction(ACTION_UPLOAD_COOKIE);
         return filter;
     }
 
@@ -96,6 +99,9 @@ public class AutomationReceiver extends BroadcastReceiver {
             case ACTION_GET_STATUS:
                 handleGetStatus(context);
                 break;
+            case ACTION_UPLOAD_COOKIE:
+                handleUploadCookie(context);
+                break;
             default:
                 logResult(context, "error", "Unknown action: " + action);
         }
@@ -114,6 +120,11 @@ public class AutomationReceiver extends BroadcastReceiver {
     private void handleCheckWelfare(Context context) {
         logResult(context, "status", "Checking welfare...");
         listener.performCheckWelfare();
+    }
+
+    private void handleUploadCookie(Context context) {
+        logResult(context, "status", "Uploading cookie...");
+        listener.performUploadCookie();
     }
 
     private void handleGetStatus(Context context) {
