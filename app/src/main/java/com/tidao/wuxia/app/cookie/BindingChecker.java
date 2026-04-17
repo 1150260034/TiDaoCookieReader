@@ -153,18 +153,20 @@ public class BindingChecker {
     }
 
     private static String buildCookieString(CookieExtractor.CookieData cookieData) {
+        String appOpenIdValue = !cookieData.appOpenId.isEmpty() ? cookieData.appOpenId : cookieData.openid;
+        String acctypeValue = !cookieData.acctype.isEmpty() ? cookieData.acctype : "qc";
         StringBuilder sb = new StringBuilder();
         if (!cookieData.accessToken.isEmpty()) sb.append("access_token=").append(cookieData.accessToken).append("; ");
         if (!cookieData.openid.isEmpty()) sb.append("openId=").append(cookieData.openid).append("; ");
         if (!cookieData.openid.isEmpty()) sb.append("openid=").append(cookieData.openid).append("; ");
-        if (!cookieData.openid.isEmpty()) sb.append("appOpenId=").append(cookieData.openid).append("; ");
-        if (!cookieData.openid.isEmpty()) sb.append("appOpenid=").append(cookieData.openid).append("; ");
+        if (!appOpenIdValue.isEmpty()) sb.append("appOpenId=").append(appOpenIdValue).append("; ");
+        if (!appOpenIdValue.isEmpty()) sb.append("appOpenid=").append(appOpenIdValue).append("; ");
         if (!cookieData.uin.isEmpty()) sb.append("uin=").append(cookieData.uin).append("; ");
         if (!cookieData.appid.isEmpty()) sb.append("appid=").append(cookieData.appid).append("; ");
         if (!cookieData.appid.isEmpty()) sb.append("appId=").append(cookieData.appid).append("; ");
         if (!cookieData.eas_sid.isEmpty()) sb.append("eas_sid=").append(cookieData.eas_sid).append("; ");
         if (!cookieData.accessToken.isEmpty()) sb.append("accessToken=").append(cookieData.accessToken).append("; ");
-        sb.append("acctype=qc");
+        sb.append("acctype=").append(acctypeValue);
         return sb.toString().trim();
     }
 

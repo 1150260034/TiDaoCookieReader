@@ -95,19 +95,21 @@ public class CookieExtractor {
          * 生成完整的 Cookie 字符串
          */
         public String toCookieString() {
+            String effectiveAppOpenId = !appOpenId.isEmpty() ? appOpenId : openid;
+            String effectiveAcctype = !acctype.isEmpty() ? acctype : "qc";
             StringBuilder sb = new StringBuilder();
             if (!accessToken.isEmpty()) sb.append("access_token=").append(accessToken).append("; ");
             if (!openid.isEmpty()) sb.append("openId=").append(openid).append("; ");
             if (!openid.isEmpty()) sb.append("openid=").append(openid).append("; ");
-            if (!openid.isEmpty()) sb.append("appOpenId=").append(openid).append("; ");
-            if (!openid.isEmpty()) sb.append("appOpenid=").append(openid).append("; ");
+            if (!effectiveAppOpenId.isEmpty()) sb.append("appOpenId=").append(effectiveAppOpenId).append("; ");
+            if (!effectiveAppOpenId.isEmpty()) sb.append("appOpenid=").append(effectiveAppOpenId).append("; ");
             if (!uin.isEmpty()) sb.append("uin=").append(uin).append("; ");
             if (!appid.isEmpty()) sb.append("appid=").append(appid).append("; ");
             if (!appid.isEmpty()) sb.append("appId=").append(appid).append("; ");
             if (!eas_sid.isEmpty()) sb.append("eas_sid=").append(eas_sid).append("; ");
             if (!accessToken.isEmpty()) sb.append("accessToken=").append(accessToken).append("; ");
-            sb.append("acctype=qc");
-            return sb.toString();
+            sb.append("acctype=").append(effectiveAcctype);
+            return sb.toString().trim();
         }
     }
 
