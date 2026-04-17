@@ -97,6 +97,7 @@ public class CookieExtractor {
         public String toCookieString() {
             StringBuilder sb = new StringBuilder();
             if (!accessToken.isEmpty()) sb.append("access_token=").append(accessToken).append("; ");
+            if (!openid.isEmpty()) sb.append("openId=").append(openid).append("; ");
             if (!openid.isEmpty()) sb.append("openid=").append(openid).append("; ");
             if (!openid.isEmpty()) sb.append("appOpenId=").append(openid).append("; ");
             if (!openid.isEmpty()) sb.append("appOpenid=").append(openid).append("; ");
@@ -104,7 +105,8 @@ public class CookieExtractor {
             if (!appid.isEmpty()) sb.append("appid=").append(appid).append("; ");
             if (!appid.isEmpty()) sb.append("appId=").append(appid).append("; ");
             if (!eas_sid.isEmpty()) sb.append("eas_sid=").append(eas_sid).append("; ");
-            if (!accessToken.isEmpty()) sb.append("accessToken=").append(accessToken);
+            if (!accessToken.isEmpty()) sb.append("accessToken=").append(accessToken).append("; ");
+            sb.append("acctype=qc");
             return sb.toString();
         }
     }
