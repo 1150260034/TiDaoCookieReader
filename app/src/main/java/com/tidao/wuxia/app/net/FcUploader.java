@@ -1,6 +1,7 @@
 package com.tidao.wuxia.app.net;
 
 import android.os.Handler;
+import android.util.Log;
 import com.tidao.wuxia.app.BuildConfig;
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -11,7 +12,24 @@ import java.net.URL;
 
 public final class FcUploader {
 
+    private static final String TAG = "FcUploader";
+
+    private static final int MAX_LOG_BODY_LEN = 200;
+
     private FcUploader() {}
+
+    /** 账号名脱敏：仅保留首字符 + *** */
+    private static String maskName(String name) {
+        if (name == null || name.isEmpty()) return "***";
+        return name.charAt(0) + "***";
+    }
+
+    /** 截断响应体，避免日志泄露敏感数据 */
+    private static String truncateBody(String text) {
+        if (text == null) return "";
+        if (text.length() <= MAX_LOG_BODY_LEN) return text;
+        return text.substring(0, MAX_LOG_BODY_LEN) + "...(truncated)";
+    }
 
     public interface UploadCallback {
         void onSuccess(String status, String name);
@@ -22,6 +40,7 @@ public final class FcUploader {
                               JSONObject roleParams, String sckey,
                               Handler mainHandler, UploadCallback callback) {
         new Thread(() -> {
+            if (BuildConfig.DEBUG) Log.d(TAG, "开始上传: account=" + maskName(accountName));
             HttpURLConnection conn = null;
             try {
                 JSONObject body = new JSONObject();
@@ -47,6 +66,7 @@ public final class FcUploader {
                 }
 
                 int code = conn.getResponseCode();
+                if (BuildConfig.DEBUG) Log.d(TAG, "响应: HTTP " + code);
                 java.io.InputStream is = (code >= 200 && code < 300)
                         ? conn.getInputStream() : conn.getErrorStream();
                 StringBuilder sb = new StringBuilder();
@@ -57,22 +77,28 @@ public final class FcUploader {
                     reader.close();
                 }
                 String respBody = sb.toString();
+                if (BuildConfig.DEBUG) Log.d(TAG, "响应体: " + truncateBody(respBody));
 
                 if (code == 200) {
                     JSONObject resp = new JSONObject(respBody);
                     String status = resp.optString("status", "");
                     String name = resp.optString("name", accountName);
+                    Log.i(TAG, "上传成功: status=" + status + ", name=" + maskName(name));
                     mainHandler.post(() -> {
                         if (callback != null) callback.onSuccess(status, name);
                     });
                 } else if (code == 403) {
+                    Log.e(TAG, "认证失败: HTTP 403, body=" + truncateBody(respBody));
                     postFailed(mainHandler, callback, "认证失败（unauthorized）");
                 } else if (code == 400) {
+                    Log.e(TAG, "参数错误: HTTP 400, body=" + truncateBody(respBody));
                     postFailed(mainHandler, callback, "请求参数错误：" + respBody);
                 } else {
-                    postFailed(mainHandler, callback, "上传失败（HTTP " + code + "）：" + respBody);
+                    Log.e(TAG, "上传失败: HTTP " + code + ", body=" + truncateBody(respBody));
+                    postFailed(mainHandler, callback, "上传失败（HTTP " + code + "）：" + truncateBody(respBody));
                 }
             } catch (Exception e) {
+                Log.e(TAG, "上传异常", e);
                 postFailed(mainHandler, callback, "上传异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             } finally {
                 if (conn != null) conn.disconnect();
