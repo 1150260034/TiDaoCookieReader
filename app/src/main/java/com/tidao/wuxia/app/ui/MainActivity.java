@@ -246,7 +246,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         appendLog("2. 扫码登录QQ");
         appendLog("3. 点击「周周载愿」按钮");
         appendLog("4. 点「读取Cookie」");
-        appendLog("5. 点「复制全部」");
+        appendLog("5. 点「上传到云端」");
         appendLog("===== 每日福利 =====");
         appendLog("首次使用需绑定角色:");
         appendLog("1. 进入「每日福利」活动");
@@ -523,7 +523,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         dailyWelfareCheckResult = "未绑定";
                         appendLog("每日福利检测: 未绑定");
                     }
-                    updateStatus("读取成功！点「复制全部」");
+                    updateStatus("读取成功！点「上传到云端」");
                     updateButtons(true);
                     Toast.makeText(MainActivity.this, "读取完成!", Toast.LENGTH_SHORT).show();
                 });
@@ -540,7 +540,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         appendLog("每日福利检测失败: " + error);
                     }
                     // 即使检测失败也允许复制（可能实际可用）
-                    updateStatus("读取成功！点「复制全部」");
+                    updateStatus("读取成功！点「上传到云端」");
                     updateButtons(true);
                     Toast.makeText(MainActivity.this, "读取完成!", Toast.LENGTH_SHORT).show();
                 });

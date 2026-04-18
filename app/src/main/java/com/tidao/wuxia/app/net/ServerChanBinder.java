@@ -26,7 +26,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 
 public final class ServerChanBinder {
-    private static final String BIND_URL = "https://sct.ftqq.com/appkey/create/forward?name=%E5%A4%A9%E5%88%80%E8%87%AA%E5%8A%A8%E7%AD%BE%E5%88%B0&url=tidao%3A%2F%2Fserverchan%2Fcallback%3Fsckey%3D%7Bappkey%7D";
+    private static final String BIND_URL = "https://sct.ftqq.com/appkey/create/forward?name=%E5%A4%A9%E5%88%80%E8%87%AA%E5%8A%A8%E7%AD%BE%E5%88%B0&url=tidao%3A%2F%2Fserverchan%2Fcallback%3Fsckey%3D%7Bkey%7D";
 
     private ServerChanBinder() {}
 
