@@ -10,7 +10,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -19,7 +18,6 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,19 +27,19 @@ import androidx.core.content.FileProvider;
 import com.tidao.wuxia.app.AutomationReceiver;
 import com.tidao.wuxia.app.BuildConfig;
 import com.tidao.wuxia.app.R;
+import com.tidao.wuxia.app.data.PrefsManager;
 import com.tidao.wuxia.app.cookie.BindingChecker;
 import com.tidao.wuxia.app.cookie.CookieExtractor;
 import com.tidao.wuxia.app.cookie.GameDatabaseReader;
 import com.tidao.wuxia.app.cookie.WebViewCookieReader;
+import com.tidao.wuxia.app.net.FcUploader;
+import com.tidao.wuxia.app.net.ServerChanBinder;
 import com.tidao.wuxia.app.utils.RootChecker;
 import com.tidao.wuxia.app.utils.UpdateChecker;
 
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 /**
  * 主界面 - Cookie读取器
@@ -65,14 +63,15 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private Button btnOpenTianDao;
     private Button btnReadCookie;
     private Button btnCopyAll;
-    private Button btnUploadCloud;
     private Button btnCheckUpdate;
     private TextView tvStatus;
     private TextView tvLog;
     private TextView tvVersion;
     private ScrollView scrollLog;
+    private TextView tvScKeyStatus;
 
     // 数据
+    private PrefsManager prefsManager;
     private CookieExtractor.CookieData cookieData;
     private GameDatabaseReader.RoleInfo roleInfo;
     private GameDatabaseReader gameDatabaseReader;
@@ -91,6 +90,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         setContentView(R.layout.activity_main);
 
         mainHandler = new Handler(getMainLooper());
+        prefsManager = new PrefsManager(this);
         cookieData = new CookieExtractor.CookieData();
         roleInfo = new GameDatabaseReader.RoleInfo();
         gameDatabaseReader = new GameDatabaseReader();
@@ -172,7 +172,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao = findViewById(R.id.btn_open_tiandao);
         btnReadCookie = findViewById(R.id.btn_read_cookie);
         btnCopyAll = findViewById(R.id.btn_copy_all);
-        btnUploadCloud = findViewById(R.id.btn_upload_cloud);
         btnCheckUpdate = findViewById(R.id.btn_check_update);
         tvStatus = findViewById(R.id.tv_status);
         tvLog = findViewById(R.id.tv_log);
@@ -189,6 +188,18 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
         updateStatus("准备就绪");
         updateButtons(false);
+        tvScKeyStatus = findViewById(R.id.tv_sckey_status);
+        updateScKeyStatus();
+    }
+
+    private void updateScKeyStatus() {
+        if (prefsManager.hasSckey()) {
+            tvScKeyStatus.setText("Server酱：已绑定 ✓");
+            tvScKeyStatus.setTextColor(0xFF00CC66);
+        } else {
+            tvScKeyStatus.setText("Server酱：未绑定");
+            tvScKeyStatus.setTextColor(0xFFFF6666);
+        }
     }
 
     /**
@@ -218,12 +229,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnInstallTiandao.setOnClickListener(v -> installTiandao());
         btnOpenTianDao.setOnClickListener(v -> openTianDao());
         btnReadCookie.setOnClickListener(v -> readWebViewCookie());
-        btnCopyAll.setOnClickListener(v -> copyAll());
-        btnUploadCloud.setOnClickListener(v -> uploadToCloud());
-        btnUploadCloud.setOnLongClickListener(v -> {
-            getSharedPreferences("upload_config", MODE_PRIVATE)
-                    .edit().remove("sckey_configured").remove("upload_sckey").apply();
-            Toast.makeText(this, "Server酱配置已清除", Toast.LENGTH_SHORT).show();
+        btnCopyAll.setOnClickListener(v -> uploadToCloud());
+        btnCopyAll.setOnLongClickListener(v -> {
+            copyAll();
             return true;
         });
         btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
@@ -799,7 +807,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private void updateButtons(boolean hasCookie) {
         btnReadCookie.setEnabled(true); // 始终可点击
         btnCopyAll.setEnabled(hasCookie);
-        btnUploadCloud.setEnabled(hasCookie);
     }
 
     private void appendLog(String message) {
@@ -817,65 +824,22 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     }
 
     /**
-     * Server酱 Key 首次配置对话框（仅弹一次）
-     */
-    private void showScKeyConfigDialog(Runnable onDone) {
-        EditText etScKey = new EditText(this);
-        etScKey.setHint("留空则不推送签到结果");
-        etScKey.setPadding(32, 16, 32, 16);
-
-        new AlertDialog.Builder(this)
-                .setTitle("配置 Server酱推送（可选）")
-                .setMessage("填写 Server酱 Key 可在签到成功后收到微信推送通知。")
-                .setView(etScKey)
-                .setPositiveButton("确定", (dialog, which) -> {
-                    String key = etScKey.getText().toString().trim();
-                    SharedPreferences prefs = getSharedPreferences("upload_config", MODE_PRIVATE);
-                    SharedPreferences.Editor editor = prefs.edit();
-                    if (!key.isEmpty()) {
-                        editor.putString("upload_sckey", key);
-                    }
-                    editor.putBoolean("sckey_configured", true);
-                    editor.apply();
-                    onDone.run();
-                })
-                .setNegativeButton("跳过", (dialog, which) -> {
-                    getSharedPreferences("upload_config", MODE_PRIVATE)
-                            .edit().putBoolean("sckey_configured", true).apply();
-                    onDone.run();
-                })
-                .setCancelable(false)
-                .show();
-    }
-
-    /**
-     * 上传 Cookie 到云端
+     * 上传 Cookie 到云端（强制 sckey 绑定）
      */
     private void uploadToCloud() {
         if (cookieData == null || !cookieData.isComplete()) {
             Toast.makeText(this, "请先读取 Cookie", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        String uploadUrl = BuildConfig.UPLOAD_COOKIE_URL;
-        String authToken = BuildConfig.API_TOKEN;
+        String uploadUrl = BuildConfig.FC_UPLOAD_URL;
         if (uploadUrl == null || uploadUrl.isEmpty()) {
             Toast.makeText(this, "未配置上传地址，请使用 CI 构建版本", Toast.LENGTH_LONG).show();
             return;
         }
-
-        SharedPreferences prefs = getSharedPreferences("upload_config", MODE_PRIVATE);
-        if (!prefs.getBoolean("sckey_configured", false)) {
-            showScKeyConfigDialog(() -> uploadToCloud());
+        if (roleInfo == null || !roleInfo.isComplete()) {
+            Toast.makeText(this, "角色信息不完整，请重新读取", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        if (roleInfo == null) {
-            Toast.makeText(this, "角色信息为空，请重新读取", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String sckey = prefs.getString("upload_sckey", "");
         String accountName = roleInfo.playername;
         if (accountName == null || accountName.isEmpty()) {
             accountName = cookieData.rolename;
@@ -884,105 +848,86 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             Toast.makeText(this, "无法确定角色名，请重新读取", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        final String finalUrl = uploadUrl;
-        final String finalToken = authToken;
-        final String finalName = accountName;
-        final String finalSckey = sckey;
-
-        btnUploadCloud.setEnabled(false);
-        btnUploadCloud.setText("上传中...");
-        appendLog("正在上传 Cookie...");
-
-        new Thread(() -> {
-            String resultMsg = null;
-            boolean success = false;
-            try {
-                JSONObject roleParams = new JSONObject();
-                roleParams.put("area", roleInfo.area);
-                roleParams.put("playername", roleInfo.playername);
-                roleParams.put("roleid", roleInfo.roleid);
-                String rawUin = cookieData.uin;
-                if (rawUin != null && rawUin.startsWith("o0")) {
-                    rawUin = rawUin.substring(2);
-                }
-                roleParams.put("uin", rawUin != null ? rawUin : "");
-                roleParams.put("roleLevel", roleInfo.roleLevel);
-                roleParams.put("roleJob", roleInfo.roleJob);
-                roleParams.put("serverName", roleInfo.serverName);
-                roleParams.put("areaName", roleInfo.areaName);
-
-                JSONObject body = new JSONObject();
-                body.put("auth_token", finalToken);
-                body.put("name", finalName);
-                body.put("cookies", cookieData.toCookieString());
-                body.put("role_params", roleParams);
-                if (finalSckey != null && !finalSckey.isEmpty()) {
-                    body.put("sckey", finalSckey);
+        if (!prefsManager.hasSckey()) {
+            final String finalName = accountName;
+            ServerChanBinder.startBinding(this, prefsManager, mainHandler, new ServerChanBinder.BindCallback() {
+                @Override
+                public void onSuccess(String sckey) {
+                    updateScKeyStatus();
+                    appendLog("Server酱绑定成功，开始上传...");
+                    doUpload(finalName);
                 }
 
-                byte[] postData = body.toString().getBytes("UTF-8");
-                URL url = new URL(finalUrl);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                conn.setDoOutput(true);
-                try (OutputStream os = conn.getOutputStream()) {
-                    os.write(postData);
+                @Override
+                public void onFailed(String reason) {
+                    appendLog("Server酱绑定失败：" + reason);
+                    Toast.makeText(MainActivity.this, "绑定失败：" + reason, Toast.LENGTH_SHORT).show();
                 }
 
-                int responseCode = conn.getResponseCode();
-                java.io.InputStream is = (responseCode >= 200 && responseCode < 300)
-                        ? conn.getInputStream() : conn.getErrorStream();
-                StringBuilder sb = new StringBuilder();
-                if (is != null) {
-                    java.io.BufferedReader reader = new java.io.BufferedReader(
-                            new java.io.InputStreamReader(is, "UTF-8"));
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
-                    reader.close();
-                }
-                conn.disconnect();
-
-                String respBody = sb.toString();
-                if (responseCode == 200) {
-                    JSONObject resp = new JSONObject(respBody);
-                    String status = resp.optString("status", "");
-                    if ("updated".equals(status)) {
-                        resultMsg = "Cookie 已更新：" + resp.optString("name", finalName);
-                    } else if ("pending_approval".equals(status)) {
-                        resultMsg = "新账号，待管理员审批：" + resp.optString("name", finalName);
-                    } else {
-                        resultMsg = "上传成功：" + status;
-                    }
-                    success = true;
-                } else if (responseCode == 403) {
-                    resultMsg = "认证失败（unauthorized）";
-                } else if (responseCode == 400) {
-                    resultMsg = "请求参数错误（missing name or cookies）";
-                } else {
-                    resultMsg = "上传失败（HTTP " + responseCode + "）：" + respBody;
-                }
-            } catch (Exception e) {
-                resultMsg = "上传异常：" + e.getMessage();
-            }
-
-            final String finalMsg = resultMsg;
-            final boolean finalSuccess = success;
-            mainHandler.post(() -> {
-                btnUploadCloud.setEnabled(true);
-                btnUploadCloud.setText("\u2463 \u4e0a\u4f20\u5230\u4e91\u7aef");
-                if (finalSuccess) {
-                    appendLog("✓ 上传成功: " + finalMsg);
-                    Toast.makeText(this, finalMsg, Toast.LENGTH_LONG).show();
-                } else {
-                    appendLog("✗ 上传失败: " + finalMsg);
-                    Toast.makeText(this, finalMsg, Toast.LENGTH_LONG).show();
+                @Override
+                public void onCancelled() {
+                    appendLog("Server酱绑定已取消，上传中止");
+                    Toast.makeText(MainActivity.this, "已取消，上传中止", Toast.LENGTH_SHORT).show();
                 }
             });
-        }).start();
+            return;
+        }
+        doUpload(accountName);
+    }
+
+    /**
+     * 执行实际上传（sckey 已确保存在）
+     */
+    private void doUpload(String accountName) {
+        btnCopyAll.setEnabled(false);
+        btnCopyAll.setText("上传中...");
+        appendLog("正在上传 Cookie...");
+        try {
+            JSONObject roleParams = new JSONObject();
+            roleParams.put("area", roleInfo.area);
+            roleParams.put("playername", roleInfo.playername);
+            roleParams.put("roleid", roleInfo.roleid);
+            String rawUin = cookieData.uin;
+            if (rawUin != null && rawUin.startsWith("o0")) {
+                rawUin = rawUin.substring(2);
+            }
+            roleParams.put("uin", rawUin != null ? rawUin : "");
+            roleParams.put("roleLevel", roleInfo.roleLevel);
+            roleParams.put("roleJob", roleInfo.roleJob);
+            roleParams.put("serverName", roleInfo.serverName);
+            roleParams.put("areaName", roleInfo.areaName);
+
+            FcUploader.upload(accountName, cookieData.toCookieString(), roleParams,
+                    prefsManager.getSckey(), mainHandler, new FcUploader.UploadCallback() {
+                        @Override
+                        public void onSuccess(String status, String name) {
+                            btnCopyAll.setEnabled(true);
+                            btnCopyAll.setText("③ 上传到云端");
+                            String msg;
+                            if ("updated".equals(status)) {
+                                msg = "Cookie 已更新：" + name;
+                            } else if ("pending_approval".equals(status)) {
+                                msg = "新账号，待管理员审批：" + name;
+                            } else {
+                                msg = "上传成功：" + status;
+                            }
+                            appendLog("✓ " + msg);
+                            Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void onFailed(String message) {
+                            btnCopyAll.setEnabled(true);
+                            btnCopyAll.setText("③ 上传到云端");
+                            appendLog("✗ 上传失败：" + message);
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                        }
+                    });
+        } catch (Exception e) {
+            btnCopyAll.setEnabled(true);
+            btnCopyAll.setText("③ 上传到云端");
+            appendLog("✗ 构建请求失败：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+            Toast.makeText(this, "构建请求失败", Toast.LENGTH_SHORT).show();
+        }
     }
 }
