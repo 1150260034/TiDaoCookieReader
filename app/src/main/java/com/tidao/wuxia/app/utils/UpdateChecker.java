@@ -29,9 +29,6 @@ import com.tidao.wuxia.app.BuildConfig;
 public class UpdateChecker {
     private static final String TAG = "UpdateChecker";
 
-    // 用于从 release name 中提取构建号，如 "Build 42" -> 42
-    private static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("Build\\s+(\\d+)");
-
     // 用于从 release body 中提取 .bin 下载链接
     private static final Pattern BIN_URL_PATTERN = Pattern.compile("https://[\\w./%-]+\\.bin");
 
@@ -66,6 +63,25 @@ public class UpdateChecker {
     }
 
     /**
+     * 检查失败时的回调（网络不通、解析错误、API 返回非 200 等情况）。
+     * 仅在明确失败时触发，不与"当前已是最新版本"混淆。
+     */
+    public interface CheckFailedCallback {
+        /**
+         * @param reason 失败原因描述，已为中文，可直接展示或写入日志
+         */
+        void onCheckFailed(String reason);
+    }
+
+    /**
+     * 返回更新详情页 URL（云端 CDN 优先，未配置时回退 GitHub Releases），
+     * 用于检查失败时提供手动跳转兜底路径。
+     */
+    public static String getReleasesPageUrl() {
+        return CLOUD_RELEASES_PAGE_URL;
+    }
+
+    /**
      * 异步检查是否有新版本，仅在发现更新时回调（失败则静默忽略）
      *
      * @param currentVersion 当前版本号，如 "1.2.1"
@@ -92,9 +108,24 @@ public class UpdateChecker {
      * @param context           上下文对象（用于生命周期检查），为 null 则不做生命周期检查
      * @param currentVersion    当前版本号，如 "1.2.1"
      * @param callback          发现新版本时的回调（在主线程中调用）
-     * @param noUpdateCallback  无新版本或检测失败时的回调（在主线程中调用），为 null 则静默
+     * @param noUpdateCallback  无新版本时的回调（在主线程中调用），为 null 则静默
      */
     public static void checkForUpdates(Context context, String currentVersion, UpdateCallback callback, Runnable noUpdateCallback) {
+        checkForUpdates(context, currentVersion, callback, noUpdateCallback, null);
+    }
+
+    /**
+     * 异步检查是否有新版本，三态回调：发现更新 / 无更新 / 检查失败（互斥，不混淆）
+     *
+     * @param context           上下文对象（用于生命周期检查），为 null 则不做生命周期检查
+     * @param currentVersion    当前版本号，如 "1.2.1"
+     * @param callback          发现新版本时的回调（在主线程中调用）
+     * @param noUpdateCallback  服务端明确返回"无新版本"时的回调（在主线程中调用），为 null 则静默
+     * @param failedCallback    所有渠道均无法完成检查时的回调（网络不通/解析失败等），为 null 则静默
+     */
+    public static void checkForUpdates(Context context, String currentVersion,
+                                       UpdateCallback callback, Runnable noUpdateCallback,
+                                       CheckFailedCallback failedCallback) {
         // 防御性处理：确保 callback 不为 null，避免异步调用时出现 NPE
         final UpdateCallback safeCallback = (callback != null) ? callback :
                 (latestVersion, releasePageUrl, apkDownloadUrl) -> {
@@ -102,6 +133,9 @@ public class UpdateChecker {
                 };
         final Runnable safeNoUpdateCallback = (noUpdateCallback != null) ? noUpdateCallback : () -> {
             // no-op: 静默忽略
+        };
+        final CheckFailedCallback safeFailedCallback = (failedCallback != null) ? failedCallback : reason -> {
+            // no-op: 静默忽略（静默自检路径）
         };
 
         // 生成新的请求 ID，用于取消旧请求
@@ -121,7 +155,7 @@ public class UpdateChecker {
                 Log.d(TAG, "云函数不可用，回退 GitHub API");
             }
 
-            checkFromGitHub(requestId, currentVersion, safeCallback, safeNoUpdateCallback);
+            checkFromGitHub(requestId, currentVersion, safeCallback, safeNoUpdateCallback, safeFailedCallback);
         });
     }
 
@@ -194,7 +228,8 @@ public class UpdateChecker {
      * 通过 GitHub API 检查更新（兜底通道）
      */
     private static void checkFromGitHub(long requestId, String currentVersion,
-                                         UpdateCallback safeCallback, Runnable safeNoUpdateCallback) {
+                                         UpdateCallback safeCallback, Runnable safeNoUpdateCallback,
+                                         CheckFailedCallback safeFailedCallback) {
         HttpURLConnection conn = null;
         try {
             URL url = new URL(GITHUB_API_URL);
@@ -208,7 +243,8 @@ public class UpdateChecker {
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 Log.d(TAG, "GitHub API 返回 " + responseCode + "，跳过更新检测");
-                postCallback(requestId, safeNoUpdateCallback);
+                final String reason = "更新服务器返回错误 (HTTP " + responseCode + ")";
+                postCallback(requestId, () -> safeFailedCallback.onCheckFailed(reason));
                 return;
             }
 
@@ -246,7 +282,8 @@ public class UpdateChecker {
             if (latestVersion == null) {
                 // 兼容 android-release.yml 发布的 tag 格式（tag_name 如 "v1.2.3"）
                 if (tagName.isEmpty()) {
-                    postCallback(requestId, safeNoUpdateCallback);
+                    Log.d(TAG, "GitHub API 返回数据无法解析版本号");
+                    postCallback(requestId, () -> safeFailedCallback.onCheckFailed("无法从服务端解析版本信息"));
                     return;
                 }
                 latestVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
@@ -275,9 +312,10 @@ public class UpdateChecker {
             }
 
         } catch (Exception e) {
-            // 网络不通或解析失败，静默忽略，不影响正常使用
-            Log.d(TAG, "更新检测失败（静默忽略）: " + e.getMessage());
-            postCallback(requestId, safeNoUpdateCallback);
+            // 网络不通或解析失败：通知失败回调（由调用方决定是否静默）
+            Log.d(TAG, "更新检测失败: " + e.getMessage());
+            final String errMsg = e.getMessage() != null ? e.getMessage() : "网络请求失败";
+            postCallback(requestId, () -> safeFailedCallback.onCheckFailed(errMsg));
         } finally {
             if (conn != null) conn.disconnect();
         }
@@ -313,75 +351,35 @@ public class UpdateChecker {
     }
 
     /**
-     * 从 release name 中提取版本号。
-     * CI 发布的 release name 格式为 "最新版本 v1.2.3"，从中提取 "1.2.3"；
-     * 匹配不到时返回 null（由调用方决定 fallback 策略）。
+     * 从 release name 中提取版本号。委托 {@link VersionUtils#extractVersionFromName}。
+     * 包私有以允许单元测试直接验证。
      */
-    private static String extractVersionFromName(String releaseName) {
-        if (releaseName == null || releaseName.isEmpty()) return null;
-        Matcher m = Pattern.compile("v(\\d+\\.\\d+(?:\\.\\d+)*)").matcher(releaseName);
-        return m.find() ? m.group(1) : null;
+    static String extractVersionFromName(String releaseName) {
+        return VersionUtils.extractVersionFromName(releaseName);
     }
 
     /**
-     * 比较两个版本号，判断 latest 是否比 current 更新
-     * 支持 x.y.z 格式，不含 prerelease 后缀
+     * 比较两个版本号，判断 latest 是否比 current 更新。委托 {@link VersionUtils#isNewerVersion}。
+     * 包私有以允许单元测试直接验证。
      */
-    private static boolean isNewerVersion(String latest, String current) {
-        try {
-            // 只取 "-" 之前的部分，避免 prerelease 后缀干扰
-            latest = latest.split("-")[0];
-            current = current.split("-")[0];
-
-            String[] latestParts = latest.split("\\.");
-            String[] currentParts = current.split("\\.");
-            int len = Math.max(latestParts.length, currentParts.length);
-            for (int i = 0; i < len; i++) {
-                int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
-                int currentPart = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
-                if (latestPart > currentPart) return true;
-                if (latestPart < currentPart) return false;
-            }
-            return false;
-        } catch (Exception e) {
-            return false;
-        }
+    static boolean isNewerVersion(String latest, String current) {
+        return VersionUtils.isNewerVersion(latest, current);
     }
 
     /**
-     * 判断两个版本号是否完全相同（忽略 prerelease 后缀，补零对齐）
+     * 判断两个版本号是否完全相同（忽略 prerelease 后缀，补零对齐）。委托 {@link VersionUtils#isSameVersion}。
+     * 包私有以允许单元测试直接验证。
      */
-    private static boolean isSameVersion(String latest, String current) {
-        try {
-            latest = latest.split("-")[0];
-            current = current.split("-")[0];
-            String[] latestParts = latest.split("\\.");
-            String[] currentParts = current.split("\\.");
-            int len = Math.max(latestParts.length, currentParts.length);
-            for (int i = 0; i < len; i++) {
-                int lp = i < latestParts.length ? Integer.parseInt(latestParts[i].trim()) : 0;
-                int cp = i < currentParts.length ? Integer.parseInt(currentParts[i].trim()) : 0;
-                if (lp != cp) return false;
-            }
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+    static boolean isSameVersion(String latest, String current) {
+        return VersionUtils.isSameVersion(latest, current);
     }
 
     /**
-     * 提取远端构建号（如 "Build 42" -> 42）。解析失败返回 null。
+     * 提取远端构建号（如 "Build 42" -> 42）。委托 {@link VersionUtils#extractBuildNumber}。
+     * 包私有以允许单元测试直接验证。
      */
-    private static Integer extractBuildNumber(String source) {
-        if (source == null || source.isEmpty()) return null;
-        try {
-            Matcher m = BUILD_NUMBER_PATTERN.matcher(source);
-            if (!m.find()) return null;
-            return Integer.parseInt(m.group(1));
-        } catch (Exception e) {
-            Log.d(TAG, "构建号解析失败: " + e.getMessage());
-            return null;
-        }
+    static Integer extractBuildNumber(String source) {
+        return VersionUtils.extractBuildNumber(source);
     }
 
     /**
