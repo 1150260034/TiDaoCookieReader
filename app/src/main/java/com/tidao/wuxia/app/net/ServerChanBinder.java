@@ -7,6 +7,8 @@ import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -53,6 +55,9 @@ public final class ServerChanBinder {
         final AlertDialog[] dialogHolder = new AlertDialog[1];
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
+        // 适配小分辨率设备，让页面自适应 WebView 宽度
+        webView.getSettings().setUseWideViewPort(true);
+        webView.getSettings().setLoadWithOverviewMode(true);
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -91,6 +96,12 @@ public final class ServerChanBinder {
             webView.destroy();
         });
         dialog.show();
+        // 扩展 Dialog 尺寸到近全屏，修复小分辨率模拟器上页面显示不全的问题
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                             WindowManager.LayoutParams.MATCH_PARENT);
+        }
         webView.loadUrl(BIND_URL);
     }
 
