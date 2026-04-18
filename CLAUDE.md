@@ -128,10 +128,9 @@ adb shell am broadcast -a com.tidao.wuxia.app.action.GET_STATUS
 ### BuildConfig 注入
 
 CI 通过 `.github/actions/android-build` 复用 action 注入以下 BuildConfig 字段：
-- `API_TOKEN` — 云函数请求来源标识（有意编译进 APK，本身仅为标识用途）
-- `FC_URL` — 云函数 HTTP URL
+- `FC_URL` — 云函数 HTTP URL（更新检查通道，无需认证）
 - `CLOUD_RELEASES_PAGE_URL` — 云端更新详情页 URL（未配置时回退到 GitHub Releases）
-- `UPLOAD_COOKIE_URL` — Cookie 上传云函数 URL
+- `UPLOAD_COOKIE_URL` — Cookie 上传云函数 URL（无需认证）
 
 ## 分支规范
 

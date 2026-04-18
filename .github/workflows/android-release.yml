@@ -28,7 +28,6 @@ jobs:
           release-store-password: ${{ secrets.RELEASE_STORE_PASSWORD }}
           release-key-alias: ${{ secrets.RELEASE_KEY_ALIAS }}
           release-key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          api-token: ${{ secrets.API_TOKEN }}
           fc-url: ${{ secrets.FC_URL }}
           cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
           upload-cookie-url: ${{ secrets.UPLOAD_COOKIE_URL }}
