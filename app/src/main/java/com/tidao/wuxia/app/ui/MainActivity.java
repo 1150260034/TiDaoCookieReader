@@ -235,6 +235,28 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             return true;
         });
         btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
+        tvScKeyStatus.setOnClickListener(v -> {
+            if (prefsManager.hasSckey()) {
+                showUnbindScKeyDialog();
+            } else {
+                Toast.makeText(this, "尚未绑定 Server酱", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showUnbindScKeyDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("取消绑定")
+                .setMessage("确定取消绑定 Server酱吗？\n解绑后上传 Cookie 需重新绑定。")
+                .setCancelable(false)
+                .setPositiveButton("确定", (dialog, which) -> {
+                    prefsManager.clearSckey();
+                    updateScKeyStatus();
+                    appendLog("已取消绑定 Server酱");
+                    Toast.makeText(this, "已取消绑定 Server酱", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     /**
