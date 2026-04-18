@@ -1,6 +1,7 @@
 package com.tidao.wuxia.app.net;
 
 import android.os.Handler;
+import android.util.Log;
 import com.tidao.wuxia.app.BuildConfig;
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -10,6 +11,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public final class FcUploader {
+
+    private static final String TAG = "FcUploader";
 
     private FcUploader() {}
 
@@ -22,6 +25,7 @@ public final class FcUploader {
                               JSONObject roleParams, String sckey,
                               Handler mainHandler, UploadCallback callback) {
         new Thread(() -> {
+            Log.d(TAG, "开始上传: account=" + accountName + ", url=" + BuildConfig.UPLOAD_COOKIE_URL);
             HttpURLConnection conn = null;
             try {
                 JSONObject body = new JSONObject();
@@ -47,6 +51,7 @@ public final class FcUploader {
                 }
 
                 int code = conn.getResponseCode();
+                Log.d(TAG, "响应: HTTP " + code);
                 java.io.InputStream is = (code >= 200 && code < 300)
                         ? conn.getInputStream() : conn.getErrorStream();
                 StringBuilder sb = new StringBuilder();
@@ -57,22 +62,28 @@ public final class FcUploader {
                     reader.close();
                 }
                 String respBody = sb.toString();
+                Log.d(TAG, "响应体: " + respBody);
 
                 if (code == 200) {
                     JSONObject resp = new JSONObject(respBody);
                     String status = resp.optString("status", "");
                     String name = resp.optString("name", accountName);
+                    Log.i(TAG, "上传成功: status=" + status + ", name=" + name);
                     mainHandler.post(() -> {
                         if (callback != null) callback.onSuccess(status, name);
                     });
                 } else if (code == 403) {
+                    Log.e(TAG, "认证失败: HTTP 403, body=" + respBody);
                     postFailed(mainHandler, callback, "认证失败（unauthorized）");
                 } else if (code == 400) {
+                    Log.e(TAG, "参数错误: HTTP 400, body=" + respBody);
                     postFailed(mainHandler, callback, "请求参数错误：" + respBody);
                 } else {
+                    Log.e(TAG, "上传失败: HTTP " + code + ", body=" + respBody);
                     postFailed(mainHandler, callback, "上传失败（HTTP " + code + "）：" + respBody);
                 }
             } catch (Exception e) {
+                Log.e(TAG, "上传异常", e);
                 postFailed(mainHandler, callback, "上传异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             } finally {
                 if (conn != null) conn.disconnect();
