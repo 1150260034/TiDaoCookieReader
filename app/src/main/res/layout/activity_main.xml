@@ -104,6 +104,17 @@
             android:text="④ 上传到云端"
             android:textColor="#ffffff" />
 
+        <TextView
+            android:id="@+id/tv_sckey_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"
+            android:padding="8dp"
+            android:text="Server酱：未绑定"
+            android:textColor="#ff6666"
+            android:textSize="12sp" />
+
         <Button
             android:id="@+id/btn_check_update"
             android:layout_width="match_parent"
