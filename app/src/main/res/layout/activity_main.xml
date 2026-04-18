@@ -91,17 +91,7 @@
             android:backgroundTint="#0088ff"
             android:enabled="false"
             android:layout_marginBottom="8dp"
-            android:text="③ 复制全部"
-            android:textColor="#ffffff" />
-
-        <Button
-            android:id="@+id/btn_upload_cloud"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#00aa66"
-            android:enabled="false"
-            android:layout_marginBottom="8dp"
-            android:text="④ 上传到云端"
+            android:text="③ 上传到云端"
             android:textColor="#ffffff" />
 
         <TextView
@@ -141,7 +131,7 @@
             android:layout_marginBottom="12dp"
             android:lineSpacingExtra="4dp"
             android:padding="12dp"
-            android:text="1. 首次：点「安装天刀助手」下载\n2. 点击「①打开天刀助手」\n3. 在天刀助手中扫码登录QQ\n4. 点击「周周载愿」按钮\n5. 切回本App，点「②读取Cookie」\n6. 自动读取Cookie+角色信息\n7. 点击「③复制全部」"
+            android:text="1. 首次：点「安装天刀助手」下载\n2. 点击「①打开天刀助手」\n3. 在天刀助手中扫码登录QQ\n4. 点击「周周载愿」按钮\n5. 切回本App，点「②读取Cookie」\n6. 自动读取Cookie+角色信息\n7. 点击「③上传到云端」"
             android:textColor="#aaaaaa"
             android:textSize="12sp" />
 

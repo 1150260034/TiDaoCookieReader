@@ -33,7 +33,7 @@ public final class FcUploader {
 
                 byte[] postData = body.toString().getBytes("UTF-8");
 
-                URL url = new URL(BuildConfig.FC_UPLOAD_URL);
+                URL url = new URL(BuildConfig.UPLOAD_COOKIE_URL);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

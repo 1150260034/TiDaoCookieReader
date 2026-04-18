@@ -54,6 +54,10 @@ inputs:
     description: upload-cookie 云函数 URL（注入 BuildConfig.UPLOAD_COOKIE_URL）
     required: false
     default: ""
+  auth-token:
+    description: Cookie 上传认证 token（注入 BuildConfig.AUTH_TOKEN）
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -114,6 +118,7 @@ runs:
         FC_URL: ${{ inputs.fc-url }}
         CLOUD_RELEASES_PAGE_URL: ${{ inputs.cloud-releases-page-url }}
         UPLOAD_COOKIE_URL: ${{ inputs.upload-cookie-url }}
+        AUTH_TOKEN: ${{ inputs.auth-token }}
       run: |
         chmod +x gradlew
         EXTRA_ARGS=(--no-daemon)

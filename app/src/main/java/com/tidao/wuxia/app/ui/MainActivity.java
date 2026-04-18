@@ -63,7 +63,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private Button btnOpenTianDao;
     private Button btnReadCookie;
     private Button btnCopyAll;
-    private Button btnUploadCloud;
     private Button btnCheckUpdate;
     private TextView tvStatus;
     private TextView tvLog;
@@ -173,7 +172,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnOpenTianDao = findViewById(R.id.btn_open_tiandao);
         btnReadCookie = findViewById(R.id.btn_read_cookie);
         btnCopyAll = findViewById(R.id.btn_copy_all);
-        btnUploadCloud = findViewById(R.id.btn_upload_cloud);
         btnCheckUpdate = findViewById(R.id.btn_check_update);
         tvStatus = findViewById(R.id.tv_status);
         tvLog = findViewById(R.id.tv_log);
@@ -231,12 +229,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnInstallTiandao.setOnClickListener(v -> installTiandao());
         btnOpenTianDao.setOnClickListener(v -> openTianDao());
         btnReadCookie.setOnClickListener(v -> readWebViewCookie());
-        btnCopyAll.setOnClickListener(v -> copyAll());
-        btnUploadCloud.setOnClickListener(v -> uploadToCloud());
-        btnUploadCloud.setOnLongClickListener(v -> {
-            prefsManager.clearSckey();
-            updateScKeyStatus();
-            Toast.makeText(this, "Server酱绑定已清除", Toast.LENGTH_SHORT).show();
+        btnCopyAll.setOnClickListener(v -> uploadToCloud());
+        btnCopyAll.setOnLongClickListener(v -> {
+            copyAll();
             return true;
         });
         btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
@@ -812,7 +807,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private void updateButtons(boolean hasCookie) {
         btnReadCookie.setEnabled(true); // 始终可点击
         btnCopyAll.setEnabled(hasCookie);
-        btnUploadCloud.setEnabled(hasCookie);
     }
 
     private void appendLog(String message) {
@@ -885,8 +879,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
      * 执行实际上传（sckey 已确保存在）
      */
     private void doUpload(String accountName) {
-        btnUploadCloud.setEnabled(false);
-        btnUploadCloud.setText("上传中...");
+        btnCopyAll.setEnabled(false);
+        btnCopyAll.setText("上传中...");
         appendLog("正在上传 Cookie...");
         try {
             JSONObject roleParams = new JSONObject();
@@ -907,8 +901,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                     prefsManager.getSckey(), mainHandler, new FcUploader.UploadCallback() {
                         @Override
                         public void onSuccess(String status, String name) {
-                            btnUploadCloud.setEnabled(true);
-                            btnUploadCloud.setText("④ 上传到云端");
+                            btnCopyAll.setEnabled(true);
+                            btnCopyAll.setText("③ 上传到云端");
                             String msg;
                             if ("updated".equals(status)) {
                                 msg = "Cookie 已更新：" + name;
@@ -923,15 +917,15 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
                         @Override
                         public void onFailed(String message) {
-                            btnUploadCloud.setEnabled(true);
-                            btnUploadCloud.setText("④ 上传到云端");
+                            btnCopyAll.setEnabled(true);
+                            btnCopyAll.setText("③ 上传到云端");
                             appendLog("✗ 上传失败：" + message);
                             Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                         }
                     });
         } catch (Exception e) {
-            btnUploadCloud.setEnabled(true);
-            btnUploadCloud.setText("④ 上传到云端");
+            btnCopyAll.setEnabled(true);
+            btnCopyAll.setText("③ 上传到云端");
             appendLog("✗ 构建请求失败：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             Toast.makeText(this, "构建请求失败", Toast.LENGTH_SHORT).show();
         }

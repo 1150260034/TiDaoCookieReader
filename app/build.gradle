@@ -34,11 +34,8 @@ android {
         buildConfigField "String", "FC_URL", "\"${System.getenv('FC_URL') ?: ''}\""
         buildConfigField "String", "CLOUD_RELEASES_PAGE_URL", "\"${System.getenv('CLOUD_RELEASES_PAGE_URL') ?: ''}\""
         buildConfigField "String", "UPLOAD_COOKIE_URL", "\"${System.getenv('UPLOAD_COOKIE_URL') ?: ''}\""
-        // 以下常量需要根据你的部署替换为实际值：
-        // AUTH_TOKEN: 用于标识/校验（示例占位符，开发者请替换为真实 token）
-        buildConfigField "String", "AUTH_TOKEN", "\"REPLACE_WITH_ACTUAL_TOKEN\""
-        // FC_UPLOAD_URL: 阿里云函数/服务上传端点，开发者请替换为实际 URL
-        buildConfigField "String", "FC_UPLOAD_URL", "\"REPLACE_WITH_ACTUAL_FC_URL\""
+        // AUTH_TOKEN: Cookie 上传认证 token，由 CI 通过 auth-token secret 注入
+        buildConfigField "String", "AUTH_TOKEN", "\"${System.getenv('AUTH_TOKEN') ?: ''}\""
     }
 
     buildFeatures {
