@@ -552,7 +552,10 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     }
 
     /**
-     * 手动触发更新检查（按钮点击），有结果后恢复按钮状态并给出提示
+     * 手动触发更新检查（按钮点击），三态回调：
+     *   - 发现更新：弹出更新对话框
+     *   - 无更新：Toast 提示当前已是最新
+     *   - 检查失败：恢复按钮状态、写入日志、弹出失败对话框（提供手动打开下载页兜底）
      */
     private void checkForUpdatesManual() {
         btnCheckUpdate.setEnabled(false);
@@ -569,6 +572,12 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         btnCheckUpdate.setEnabled(true);
                         btnCheckUpdate.setText(getString(R.string.check_update));
                         Toast.makeText(this, getString(R.string.latest_version), Toast.LENGTH_SHORT).show();
+                    },
+                    reason -> {
+                        btnCheckUpdate.setEnabled(true);
+                        btnCheckUpdate.setText(getString(R.string.check_update));
+                        appendLog("检查更新失败: " + reason);
+                        showCheckUpdateFailedDialog();
                     });
         } catch (Exception e) {
             Log.e(TAG, "检查更新失败", e);
@@ -797,6 +806,19 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 .setMessage("下载更新包失败，请前往发布页面手动下载安装。\n\n" + releasePageUrl)
                 .setPositiveButton("打开下载页", (d, w) -> openReleasePage(releasePageUrl))
                 .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /**
+     * 手动检查更新失败时弹出兜底对话框，提供手动打开发布页的路径
+     */
+    private void showCheckUpdateFailedDialog() {
+        String releasePageUrl = UpdateChecker.getReleasesPageUrl();
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.check_update_failed))
+                .setMessage(getString(R.string.check_update_failed_message))
+                .setPositiveButton(getString(R.string.open_release_page), (d, w) -> openReleasePage(releasePageUrl))
+                .setNegativeButton(getString(R.string.cancel_text), null)
                 .show();
     }
 
