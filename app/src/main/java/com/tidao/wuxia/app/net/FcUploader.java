@@ -44,7 +44,6 @@ public final class FcUploader {
             HttpURLConnection conn = null;
             try {
                 JSONObject body = new JSONObject();
-                body.put("auth_token", BuildConfig.AUTH_TOKEN);
                 body.put("name", accountName);
                 body.put("cookies", cookieString);
                 body.put("role_params", roleParams);

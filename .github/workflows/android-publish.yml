@@ -58,7 +58,6 @@ jobs:
           fc-url: ${{ secrets.FC_URL }}
           cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
           upload-cookie-url: ${{ secrets.UPLOAD_COOKIE_URL }}
-          auth-token: ${{ secrets.AUTH_TOKEN }}
 
       - name: Publish latest release
         if: steps.check-paths.outputs.changed == 'true'
