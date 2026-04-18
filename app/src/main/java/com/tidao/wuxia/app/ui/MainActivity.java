@@ -831,7 +831,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             Toast.makeText(this, "请先读取 Cookie", Toast.LENGTH_SHORT).show();
             return;
         }
-        String uploadUrl = BuildConfig.FC_UPLOAD_URL;
+        String uploadUrl = BuildConfig.UPLOAD_COOKIE_URL;
         if (uploadUrl == null || uploadUrl.isEmpty()) {
             Toast.makeText(this, "未配置上传地址，请使用 CI 构建版本", Toast.LENGTH_LONG).show();
             return;
