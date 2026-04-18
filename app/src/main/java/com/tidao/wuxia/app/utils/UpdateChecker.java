@@ -145,8 +145,7 @@ public class UpdateChecker {
 
         executor.execute(() -> {
             // 双源策略：云函数可用时优先尝试，失败则回退 GitHub
-            boolean cloudFunctionAvailable = !BuildConfig.API_TOKEN.isEmpty()
-                    && !BuildConfig.FC_URL.isEmpty();
+            boolean cloudFunctionAvailable = !BuildConfig.FC_URL.isEmpty();
 
             if (cloudFunctionAvailable) {
                 boolean handled = checkFromCloudFunction(
@@ -172,7 +171,6 @@ public class UpdateChecker {
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
-            conn.setRequestProperty("Authorization", "Bearer " + BuildConfig.API_TOKEN);
             conn.setRequestProperty("User-Agent", "TiDaoCookieReader/" + currentVersion);
 
             int responseCode = conn.getResponseCode();
