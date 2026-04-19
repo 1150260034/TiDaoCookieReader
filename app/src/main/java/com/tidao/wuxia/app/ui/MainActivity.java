@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -55,13 +53,13 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private static final String TIADAO_PACKAGE = "com.tencent.gamehelper.wuxia";
 
     // 应用宝下载地址
-    private static final String APP_SO_URL = "https://sj.qq.com/appdetail/com.tencent.gamehelper.wuxia";
+    private static final String APP_SO_URL = "https://a.app.qq.com/o/simple.jsp?pkgname=com.tencent.gamehelper.wuxia";
 
     // UI 组件
     private Button btnInstallTiandao;
     private Button btnOpenTianDao;
     private Button btnReadCookie;
-    private Button btnCopyAll;
+    private Button btnUpload;
     private Button btnCheckUpdate;
     private TextView tvStatus;
     private TextView tvLog;
@@ -149,7 +147,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             Log.i("TidaoResult", "[ERROR] No cookie data available");
             return;
         }
-        copyAll();
+        uploadToCloud();
     }
 
     @Override
@@ -170,7 +168,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnInstallTiandao = findViewById(R.id.btn_install_tiandao);
         btnOpenTianDao = findViewById(R.id.btn_open_tiandao);
         btnReadCookie = findViewById(R.id.btn_read_cookie);
-        btnCopyAll = findViewById(R.id.btn_copy_all);
+        btnUpload = findViewById(R.id.btn_upload);
         btnCheckUpdate = findViewById(R.id.btn_check_update);
         tvStatus = findViewById(R.id.tv_status);
         tvLog = findViewById(R.id.tv_log);
@@ -185,7 +183,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             tvVersion.setText("v1.0");
         }
 
-        updateStatus("准备就绪");
+        updateStatus(getString(R.string.status_waiting));
         updateButtons(false);
         tvScKeyStatus = findViewById(R.id.tv_sckey_status);
         updateScKeyStatus();
@@ -228,11 +226,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         btnInstallTiandao.setOnClickListener(v -> installTiandao());
         btnOpenTianDao.setOnClickListener(v -> openTianDao());
         btnReadCookie.setOnClickListener(v -> readWebViewCookie());
-        btnCopyAll.setOnClickListener(v -> uploadToCloud());
-        btnCopyAll.setOnLongClickListener(v -> {
-            copyAll();
-            return true;
-        });
+        btnUpload.setOnClickListener(v -> uploadToCloud());
         btnCheckUpdate.setOnClickListener(v -> checkForUpdatesManual());
         tvScKeyStatus.setOnClickListener(v -> {
             if (prefsManager.hasSckey()) {
@@ -353,53 +347,6 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 });
             }
         });
-    }
-
-    /**
-     * 复制全部Cookie信息
-     */
-    private void copyAll() {
-        if (cookieData.accessToken.isEmpty() && cookieData.openid.isEmpty()) {
-            Toast.makeText(this, "还没有读取到 Cookie", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        StringBuilder sb = new StringBuilder();
-
-        // 添加 Cookie
-        String cookie = cookieData.toCookieString();
-        sb.append("【Cookie】\n").append(cookie);
-
-        // 添加角色信息
-        if (roleInfo.isComplete()) {
-            sb.append("\n\n【角色信息】\n");
-            sb.append("area=").append(roleInfo.area);
-            if (!roleInfo.areaName.isEmpty()) sb.append(" (").append(roleInfo.areaName).append(")");
-            sb.append("\n");
-            sb.append("playername=").append(roleInfo.playername).append("\n");
-            sb.append("roleid=").append(roleInfo.roleid).append("\n");
-            if (!roleInfo.roleLevel.isEmpty()) {
-                sb.append("roleLevel=").append(roleInfo.roleLevel).append("\n");
-            }
-            if (!roleInfo.roleJob.isEmpty()) {
-                sb.append("roleJob=").append(roleInfo.roleJob).append("\n");
-            }
-        }
-
-        // 添加每日福利检测结论
-        if (!dailyWelfareCheckResult.isEmpty()) {
-            sb.append("\n\n【每日福利检测】：").append(dailyWelfareCheckResult);
-        }
-
-        copyToClipboard(sb.toString(), "Cookie + 角色信息 + 每日福利检测");
-        appendLog("已复制Cookie和角色信息到剪贴板");
-        Toast.makeText(this, "已复制!", Toast.LENGTH_SHORT).show();
-    }
-
-    private void copyToClipboard(String text, String label) {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        ClipData clip = ClipData.newPlainText(label, text);
-        clipboard.setPrimaryClip(clip);
     }
 
     /**
@@ -849,7 +796,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
     private void updateButtons(boolean hasCookie) {
         btnReadCookie.setEnabled(true); // 始终可点击
-        btnCopyAll.setEnabled(hasCookie);
+        btnUpload.setEnabled(hasCookie);
     }
 
     private void appendLog(String message) {
@@ -922,8 +869,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
      * 执行实际上传（sckey 已确保存在）
      */
     private void doUpload(String accountName) {
-        btnCopyAll.setEnabled(false);
-        btnCopyAll.setText("上传中...");
+        btnUpload.setEnabled(false);
+        btnUpload.setText("上传中...");
         appendLog("正在上传 Cookie...");
         try {
             JSONObject roleParams = new JSONObject();
@@ -944,8 +891,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                     prefsManager.getSckey(), prefsManager.getOwner(), mainHandler, new FcUploader.UploadCallback() {
                         @Override
                         public void onSuccess(String status, String name) {
-                            btnCopyAll.setEnabled(true);
-                            btnCopyAll.setText("③ 上传到云端");
+                            btnUpload.setEnabled(true);
+                            btnUpload.setText(getString(R.string.action_upload_cloud));
                             String msg;
                             if ("updated".equals(status)) {
                                 msg = "Cookie 已更新：" + name;
@@ -960,8 +907,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
                         @Override
                         public void onFailed(String message) {
-                            btnCopyAll.setEnabled(true);
-                            btnCopyAll.setText("③ 上传到云端");
+                            btnUpload.setEnabled(true);
+                            btnUpload.setText(getString(R.string.action_upload_cloud));
                             // sendkey 失效时自动解绑，让用户重新点击上传按钮绑定新 key
                             if (message != null && (message.contains("sendkey validation failed")
                                     || message.contains("invalid_key"))) {
@@ -978,8 +925,8 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         }
                     });
         } catch (Exception e) {
-            btnCopyAll.setEnabled(true);
-            btnCopyAll.setText("③ 上传到云端");
+            btnUpload.setEnabled(true);
+            btnUpload.setText(getString(R.string.action_upload_cloud));
             appendLog("✗ 构建请求失败：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             Toast.makeText(this, "构建请求失败", Toast.LENGTH_SHORT).show();
         }

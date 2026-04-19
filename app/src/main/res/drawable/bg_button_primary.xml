@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主按钮：使用 selector 区分 enabled/disabled 状态 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- disabled 态：降低饱和度，灰紫色 -->
+    <item android:state_enabled="false">
+        <shape>
+            <solid android:color="#44504878" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <!-- 正常态：主题紫色 -->
+    <item>
+        <shape>
+            <solid android:color="@color/color_primary" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</selector>
