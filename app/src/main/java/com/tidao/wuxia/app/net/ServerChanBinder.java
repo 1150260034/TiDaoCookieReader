@@ -1,9 +1,10 @@
 package com.tidao.wuxia.app.net;
 
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +14,9 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.tidao.wuxia.app.data.PrefsManager;
 
@@ -40,9 +43,44 @@ public final class ServerChanBinder {
 
     public static void startBinding(Context context, PrefsManager prefsManager,
                                     Handler mainHandler, BindCallback callback) {
-        FrameLayout container = new FrameLayout(context);
         FrameLayout.LayoutParams fill = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        LinearLayout root = new LinearLayout(context);
+        root.setLayoutParams(fill);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(0xFFFFFFFF);
+
+        FrameLayout header = new FrameLayout(context);
+        header.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        int horizontalPadding = dp(context, 20);
+        header.setPadding(horizontalPadding, dp(context, 18), horizontalPadding, dp(context, 12));
+
+        TextView titleView = new TextView(context);
+        titleView.setText("绑定 Server酱");
+        titleView.setTextColor(0xFF222222);
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        titleView.setTypeface(titleView.getTypeface(), android.graphics.Typeface.BOLD);
+        titleView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.START | Gravity.CENTER_VERTICAL));
+
+        TextView closeView = new TextView(context);
+        closeView.setText("取消绑定");
+        closeView.setTextColor(0xFF00897B);
+        closeView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        closeView.setPadding(dp(context, 8), dp(context, 8), 0, dp(context, 8));
+        closeView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.END | Gravity.CENTER_VERTICAL));
+        header.addView(titleView);
+        header.addView(closeView);
+
+        FrameLayout container = new FrameLayout(context);
+        container.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         WebView webView = new WebView(context);
         webView.setLayoutParams(fill);
         ProgressBar progressBar = new ProgressBar(context);
@@ -51,14 +89,25 @@ public final class ServerChanBinder {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         container.addView(webView);
         container.addView(progressBar);
+        root.addView(header);
+        root.addView(container);
 
-        final AlertDialog[] dialogHolder = new AlertDialog[1];
+        final Dialog[] dialogHolder = new Dialog[1];
+        final boolean[] bindingHandled = new boolean[1];
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        // 适配小分辨率设备，让页面自适应 WebView 宽度
+        // 尊重页面 viewport meta，不强制缩放（overview mode 会导致 fixed 弹窗被裁剪）
         webView.getSettings().setUseWideViewPort(true);
-        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setLoadWithOverviewMode(false);
+        webView.getSettings().setSupportZoom(true);
+        webView.getSettings().setBuiltInZoomControls(true);
+        webView.getSettings().setDisplayZoomControls(false);
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
@@ -67,6 +116,7 @@ public final class ServerChanBinder {
                     return false;
                 }
                 String sckey = uri.getQueryParameter("sckey");
+                bindingHandled[0] = true;
                 if (dialogHolder[0] != null && dialogHolder[0].isShowing()) {
                     dialogHolder[0].dismiss();
                 }
@@ -84,25 +134,36 @@ public final class ServerChanBinder {
             }
         });
 
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle("绑定 Server酱")
-                .setView(container)
-                .setCancelable(false)
-                .setNegativeButton("取消绑定", (d, which) -> postCancelled(mainHandler, callback))
-                .create();
+        Dialog dialog = new Dialog(context, android.R.style.Theme_Material_Light_NoActionBar_Fullscreen);
         dialogHolder[0] = dialog;
+        dialog.setCancelable(false);
+        dialog.setContentView(root);
+        closeView.setOnClickListener(v -> {
+            if (!bindingHandled[0]) {
+                bindingHandled[0] = true;
+                postCancelled(mainHandler, callback);
+            }
+            dialog.dismiss();
+        });
         dialog.setOnDismissListener(d -> {
             webView.stopLoading();
             webView.destroy();
         });
         dialog.show();
-        // 扩展 Dialog 尺寸到近全屏，修复小分辨率模拟器上页面显示不全的问题
         Window window = dialog.getWindow();
         if (window != null) {
             window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
                              WindowManager.LayoutParams.MATCH_PARENT);
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         webView.loadUrl(BIND_URL);
+    }
+
+    private static int dp(Context context, int value) {
+        return Math.round(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                value,
+                context.getResources().getDisplayMetrics()));
     }
 
     private static void validateSckeyAsync(String sckey, PrefsManager prefsManager,
