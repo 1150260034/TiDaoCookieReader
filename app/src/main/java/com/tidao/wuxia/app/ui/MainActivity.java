@@ -968,10 +968,13 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                 prefsManager.clearSckey();
                                 updateScKeyStatus();
                                 appendLog("✗ Server酱 sendkey 已失效，已自动解绑，请重新上传");
+                                Toast.makeText(MainActivity.this,
+                                        "Server酱 sendkey 已失效，请重新点击「上传到云端」按钮",
+                                        Toast.LENGTH_LONG).show();
                             } else {
                                 appendLog("✗ 上传失败：" + message);
+                                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             }
-                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                         }
                     });
         } catch (Exception e) {
