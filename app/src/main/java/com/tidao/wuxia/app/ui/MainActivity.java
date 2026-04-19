@@ -962,7 +962,15 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         public void onFailed(String message) {
                             btnCopyAll.setEnabled(true);
                             btnCopyAll.setText("③ 上传到云端");
-                            appendLog("✗ 上传失败：" + message);
+                            // sendkey 失效时自动解绑，让用户重新点击上传按钮绑定新 key
+                            if (message != null && (message.contains("sendkey validation failed")
+                                    || message.contains("invalid_key"))) {
+                                prefsManager.clearSckey();
+                                updateScKeyStatus();
+                                appendLog("✗ Server酱 sendkey 已失效，已自动解绑，请重新上传");
+                            } else {
+                                appendLog("✗ 上传失败：" + message);
+                            }
                             Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                         }
                     });
