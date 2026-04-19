@@ -37,7 +37,7 @@ public final class FcUploader {
     }
 
     public static void upload(String accountName, String cookieString,
-                              JSONObject roleParams, String sckey,
+                              JSONObject roleParams, String sckey, String owner,
                               Handler mainHandler, UploadCallback callback) {
         new Thread(() -> {
             if (BuildConfig.DEBUG) Log.d(TAG, "开始上传: account=" + maskName(accountName));
@@ -48,6 +48,7 @@ public final class FcUploader {
                 body.put("cookies", cookieString);
                 body.put("role_params", roleParams);
                 body.put("sckey", sckey);
+                body.put("owner", owner);
 
                 byte[] postData = body.toString().getBytes("UTF-8");
 

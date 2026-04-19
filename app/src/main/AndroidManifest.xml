@@ -33,6 +33,7 @@
                 <action android:name="com.tidao.wuxia.app.action.COPY_ALL" />
                 <action android:name="com.tidao.wuxia.app.action.CHECK_WELFARE" />
                 <action android:name="com.tidao.wuxia.app.action.GET_STATUS" />
+                <action android:name="com.tidao.wuxia.app.action.UPLOAD_COOKIE" />
             </intent-filter>
         </receiver>
 

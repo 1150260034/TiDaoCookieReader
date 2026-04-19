@@ -942,7 +942,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleParams.put("areaName", roleInfo.areaName);
 
             FcUploader.upload(accountName, cookieData.toCookieString(), roleParams,
-                    prefsManager.getSckey(), mainHandler, new FcUploader.UploadCallback() {
+                    prefsManager.getSckey(), prefsManager.getOwner(), mainHandler, new FcUploader.UploadCallback() {
                         @Override
                         public void onSuccess(String status, String name) {
                             btnCopyAll.setEnabled(true);
