@@ -11,6 +11,8 @@
 - 自动读取天刀助手登录 Cookie（`access_token`、`openid`、`uin`、`appid` 等）
 - 自动读取游戏角色信息（支持多角色账号选择）
 - 检测每日福利绑定状态
+- 绑定 Server酱 sendkey 并上传 Cookie 到云端
+- 可选绑定邮箱，Cookie 失效时由后端额外发送邮件提醒
 - 一键复制全部信息到剪贴板
 
 ## 使用前提
@@ -38,13 +40,31 @@
 
 1. 打开天刀助手，扫码登录
 2. 在天刀助手中点击「周周载愿」（使 WebView 加载完成）
-3. 打开本 App → 点「读取 Cookie」→ 选择角色 → 点「复制全部」
+3. 打开本 App → 点「读取 Cookie」→ 选择角色
+4. 首次上传时按提示绑定 Server酱 sendkey
+5. 可选点击邮箱提醒状态，填写或清空提醒邮箱
+6. 点「上传到云端」或「复制全部」
+
+说明：
+
+- Server酱是必填主通知通道，后端会校验 sendkey。
+- 邮箱只是可选附加提醒，只用于 Cookie 失效通知，不替代 Server酱。
+- 填写邮箱后，后端会先发送测试邮件；测试成功才保存。
 
 详细图文教程请查看：[使用教程文档](https://docs.qq.com/aio/DRXhkU3NNY3VLSHdE?p=FxuxTS2JkoguXFfXY8ppSQ)
 
 ---
 
 > 开发者文档请参阅 [CLAUDE.md](./CLAUDE.md)
+
+### 开发与 CI
+
+```bash
+./gradlew testDebugUnitTest
+./gradlew assembleDebug
+```
+
+本项目使用 Android Gradle Plugin 8.5.0，建议 JDK 17。GitHub Actions 会在 push `main` 后运行 Android CI；CI 成功后 `android-publish.yml` 会更新 latest APK。
 
 ### Release 签名 Secrets
 
