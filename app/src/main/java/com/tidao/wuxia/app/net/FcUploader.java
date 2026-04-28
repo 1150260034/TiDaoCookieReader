@@ -37,18 +37,13 @@ public final class FcUploader {
     }
 
     public static void upload(String accountName, String cookieString,
-                              JSONObject roleParams, String sckey, String owner,
+                              JSONObject roleParams, String sckey, String owner, String email,
                               Handler mainHandler, UploadCallback callback) {
         new Thread(() -> {
             if (BuildConfig.DEBUG) Log.d(TAG, "开始上传: account=" + maskName(accountName));
             HttpURLConnection conn = null;
             try {
-                JSONObject body = new JSONObject();
-                body.put("name", accountName);
-                body.put("cookies", cookieString);
-                body.put("role_params", roleParams);
-                body.put("sckey", sckey);
-                body.put("owner", owner);
+                JSONObject body = buildUploadBody(accountName, cookieString, roleParams, sckey, owner, email);
 
                 byte[] postData = body.toString().getBytes("UTF-8");
 
@@ -104,6 +99,19 @@ public final class FcUploader {
                 if (conn != null) conn.disconnect();
             }
         }).start();
+    }
+
+    static JSONObject buildUploadBody(String accountName, String cookieString,
+                                      JSONObject roleParams, String sckey,
+                                      String owner, String email) throws Exception {
+        JSONObject body = new JSONObject();
+        body.put("name", accountName);
+        body.put("cookies", cookieString);
+        body.put("role_params", roleParams);
+        body.put("sckey", sckey);
+        body.put("owner", owner);
+        body.put("email", email == null ? "" : email.trim());
+        return body;
     }
 
     private static void postFailed(Handler mainHandler, UploadCallback callback, String msg) {

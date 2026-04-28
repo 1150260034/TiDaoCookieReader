@@ -16,6 +16,8 @@ app/build/
 !app/debug.keystore
 
 # Test artifacts
+!app/src/test/
+!app/src/test/**
 apks/*.apk
 apks/*.sqlite
 apks/*.bin

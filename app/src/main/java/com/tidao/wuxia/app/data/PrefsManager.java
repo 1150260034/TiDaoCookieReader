@@ -9,6 +9,7 @@ public class PrefsManager {
     private static final String PREFS_NAME = "tidao_prefs";
     private static final String KEY_SCKEY = "sckey";
     private static final String KEY_OWNER = "owner";
+    private static final String KEY_EMAIL = "email";
 
     private final SharedPreferences prefs;
     private final Context context;
@@ -33,6 +34,23 @@ public class PrefsManager {
 
     public void clearSckey() {
         prefs.edit().remove(KEY_SCKEY).apply();
+    }
+
+    public void saveEmail(String email) {
+        prefs.edit().putString(KEY_EMAIL, email == null ? "" : email.trim()).apply();
+    }
+
+    public String getEmail() {
+        return prefs.getString(KEY_EMAIL, "");
+    }
+
+    public boolean hasEmail() {
+        String value = getEmail();
+        return value != null && !value.trim().isEmpty();
+    }
+
+    public void clearEmail() {
+        prefs.edit().remove(KEY_EMAIL).apply();
     }
 
     /**

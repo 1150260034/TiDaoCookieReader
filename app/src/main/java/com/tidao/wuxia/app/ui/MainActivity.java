@@ -14,9 +14,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -68,6 +70,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     private TextView tvVersion;
     private ScrollView scrollLog;
     private TextView tvScKeyStatus;
+    private TextView tvEmailStatus;
 
     // 数据
     private PrefsManager prefsManager;
@@ -188,7 +191,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         updateStatus("准备就绪");
         updateButtons(false);
         tvScKeyStatus = findViewById(R.id.tv_sckey_status);
+        tvEmailStatus = findViewById(R.id.tv_email_status);
         updateScKeyStatus();
+        updateEmailStatus();
     }
 
     private void updateScKeyStatus() {
@@ -198,6 +203,16 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         } else {
             tvScKeyStatus.setText("Server酱：未绑定");
             tvScKeyStatus.setTextColor(0xFFFF6666);
+        }
+    }
+
+    private void updateEmailStatus() {
+        if (prefsManager.hasEmail()) {
+            tvEmailStatus.setText("邮箱提醒：已绑定 " + prefsManager.getEmail());
+            tvEmailStatus.setTextColor(0xFF00CC66);
+        } else {
+            tvEmailStatus.setText("邮箱提醒：未绑定（可选）");
+            tvEmailStatus.setTextColor(0xFF888888);
         }
     }
 
@@ -241,6 +256,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 Toast.makeText(this, "尚未绑定 Server酱", Toast.LENGTH_SHORT).show();
             }
         });
+        tvEmailStatus.setOnClickListener(v -> showEmailDialog());
     }
 
     private void showUnbindScKeyDialog() {
@@ -256,6 +272,43 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 })
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private void showEmailDialog() {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        input.setHint("example@qq.com");
+        input.setText(prefsManager.getEmail());
+        input.setSelection(input.getText().length());
+        int padding = dp(20);
+        input.setPadding(padding, padding / 2, padding, padding / 2);
+
+        new AlertDialog.Builder(this)
+                .setTitle("邮箱提醒（可选）")
+                .setMessage("填写后，Cookie 失效时会额外发送邮件。上传时会先发送测试邮件验证。")
+                .setView(input)
+                .setPositiveButton("保存", (dialog, which) -> {
+                    String email = input.getText().toString().trim();
+                    if (!email.isEmpty() && !isValidEmailAddress(email)) {
+                        Toast.makeText(this, "邮箱格式不正确", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    prefsManager.saveEmail(email);
+                    updateEmailStatus();
+                    appendLog(email.isEmpty() ? "已清空邮箱提醒" : "已保存邮箱提醒：" + email);
+                })
+                .setNeutralButton("清除", (dialog, which) -> {
+                    prefsManager.clearEmail();
+                    updateEmailStatus();
+                    appendLog("已清空邮箱提醒");
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private static int dp(int value) {
+        return Math.round(value * android.content.res.Resources.getSystem().getDisplayMetrics().density);
     }
 
     /**
@@ -898,6 +951,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 public void onSuccess(String sckey) {
                     updateScKeyStatus();
                     appendLog("Server酱绑定成功，开始上传...");
+                    if (!isSavedEmailValidForUpload()) {
+                        return;
+                    }
                     doUpload(finalName);
                 }
 
@@ -915,7 +971,33 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             });
             return;
         }
+        if (!isSavedEmailValidForUpload()) {
+            return;
+        }
         doUpload(accountName);
+    }
+
+    private boolean isSavedEmailValidForUpload() {
+        String email = prefsManager.getEmail();
+        if (email != null && !email.trim().isEmpty() && !isValidEmailAddress(email)) {
+            Toast.makeText(this, "邮箱格式不正确，请先修改或清空", Toast.LENGTH_SHORT).show();
+            appendLog("邮箱格式不正确，上传中止");
+            return false;
+        }
+        return true;
+    }
+
+    static boolean isValidEmailAddress(String email) {
+        String value = email == null ? "" : email.trim();
+        if (value.isEmpty() || value.length() > 254) {
+            return false;
+        }
+        int at = value.indexOf('@');
+        if (at <= 0 || at != value.lastIndexOf('@') || at >= value.length() - 1) {
+            return false;
+        }
+        String domain = value.substring(at + 1);
+        return domain.contains(".") && !value.matches(".*\\s+.*");
     }
 
     /**
@@ -941,7 +1023,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleParams.put("areaName", roleInfo.areaName);
 
             FcUploader.upload(accountName, cookieData.toCookieString(), roleParams,
-                    prefsManager.getSckey(), prefsManager.getOwner(), mainHandler, new FcUploader.UploadCallback() {
+                    prefsManager.getSckey(), prefsManager.getOwner(), prefsManager.getEmail(), mainHandler, new FcUploader.UploadCallback() {
                         @Override
                         public void onSuccess(String status, String name) {
                             btnCopyAll.setEnabled(true);
@@ -970,6 +1052,11 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                 appendLog("✗ Server酱 sendkey 已失效，已自动解绑，请重新上传");
                                 Toast.makeText(MainActivity.this,
                                         "Server酱 sendkey 已失效，请重新点击「上传到云端」按钮",
+                                        Toast.LENGTH_LONG).show();
+                            } else if (message != null && message.contains("email validation failed")) {
+                                appendLog("✗ 邮箱测试发送失败，请检查邮箱地址或稍后重试");
+                                Toast.makeText(MainActivity.this,
+                                        "邮箱测试发送失败，请检查邮箱地址或稍后重试",
                                         Toast.LENGTH_LONG).show();
                             } else {
                                 appendLog("✗ 上传失败：" + message);
