@@ -1045,7 +1045,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                         }
 
                         @Override
-                        public void onFailed(String message) {
+                        public void onFailed(int errorCode, String message) {
                             btnCopyAll.setEnabled(true);
                             btnCopyAll.setText("③ 上传到云端");
                             // sendkey 失效时自动解绑，让用户重新点击上传按钮绑定新 key
@@ -1062,12 +1062,20 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                 Toast.makeText(MainActivity.this,
                                         "邮箱测试发送失败，请检查邮箱地址或稍后重试",
                                         Toast.LENGTH_LONG).show();
-                            } else if (message != null && message.contains("角色冲突")) {
+                            } else if (errorCode == FcUploader.ERROR_ROLE_CONFLICT) {
                                 appendLog("✗ " + message);
+                                if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                                    appendLog("页面已关闭，跳过角色冲突弹窗");
+                                    btnCopyAll.setEnabled(true);
+                                    btnCopyAll.setText("③ 上传到云端");
+                                    return;
+                                }
                                 new AlertDialog.Builder(MainActivity.this)
                                         .setTitle("角色冲突")
                                         .setMessage(message + "\n\n是否用当前角色覆盖？")
                                         .setPositiveButton("覆盖", (dialog, which) -> {
+                                            btnCopyAll.setEnabled(false);
+                                            btnCopyAll.setText("覆盖中...");
                                             appendLog("用户选择覆盖，重新上传中...");
                                             try {
                                                 JSONObject roleParams = new JSONObject();
@@ -1096,7 +1104,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                                                 Toast.makeText(MainActivity.this, "覆盖成功！角色已更新：" + name, Toast.LENGTH_LONG).show();
                                                             }
                                                             @Override
-                                                            public void onFailed(String msg) {
+                                                            public void onFailed(int errorCode, String msg) {
                                                                 btnCopyAll.setEnabled(true);
                                                                 btnCopyAll.setText("③ 上传到云端");
                                                                 appendLog("✗ 覆盖上传失败：" + msg);
@@ -1110,7 +1118,14 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                                 Toast.makeText(MainActivity.this, "覆盖请求构建失败", Toast.LENGTH_SHORT).show();
                                             }
                                         })
-                                        .setNegativeButton("取消", null)
+                                        .setNegativeButton("取消", (dialog, which) -> {
+                                            btnCopyAll.setEnabled(true);
+                                            btnCopyAll.setText("③ 上传到云端");
+                                        })
+                                        .setOnDismissListener(dialog -> {
+                                            btnCopyAll.setEnabled(true);
+                                            btnCopyAll.setText("③ 上传到云端");
+                                        })
                                         .show();
                             } else {
                                 appendLog("✗ 上传失败：" + message);
