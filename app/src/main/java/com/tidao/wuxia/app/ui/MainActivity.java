@@ -472,6 +472,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 mainHandler.post(() -> {
                     // 先保存所有角色信息
                     roleInfo.area = data.area;
+                    roleInfo.areaId = data.areaId;
                     roleInfo.areaName = data.areaName;
                     roleInfo.uin = data.uin;
                     roleInfo.serverName = data.serverName;
@@ -490,6 +491,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                             roleInfo.roleLevel = role.roleLevel;
                             roleInfo.roleJob = role.roleJob;
                             roleInfo.serverName = role.serverName;
+                            roleInfo.areaId = role.areaId;
                         }
                         onRoleInfoSelected();
                     }
@@ -537,6 +539,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleInfo.roleLevel = selectedRole.roleLevel;
             roleInfo.roleJob = selectedRole.roleJob;
             roleInfo.area = selectedRole.area;
+            roleInfo.areaId = selectedRole.areaId;
             roleInfo.areaName = selectedRole.areaName;
             roleInfo.serverName = selectedRole.serverName;
 
@@ -1021,6 +1024,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleParams.put("roleJob", roleInfo.roleJob);
             roleParams.put("serverName", roleInfo.serverName);
             roleParams.put("areaName", roleInfo.areaName);
+            roleParams.put("areaId", roleInfo.areaId);
 
             FcUploader.upload(accountName, cookieData.toCookieString(), roleParams,
                     prefsManager.getSckey(), prefsManager.getOwner(), prefsManager.getEmail(), mainHandler, new FcUploader.UploadCallback() {

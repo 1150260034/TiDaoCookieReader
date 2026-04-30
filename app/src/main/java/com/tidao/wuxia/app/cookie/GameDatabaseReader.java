@@ -39,6 +39,7 @@ public class GameDatabaseReader {
      */
     public static class SingleRole {
         public String area = "";
+        public String areaId = "";
         public String areaName = "";
         public String playername = "";
         public String roleid = "";
@@ -388,6 +389,7 @@ public class GameDatabaseReader {
                         // 保存到allRoles列表
                         SingleRole role = new SingleRole();
                         role.area = fields[0];
+                        role.areaId = fields[1];
                         role.areaName = fields[2];
                         role.roleid = fields[3];
                         role.playername = fields[4];
