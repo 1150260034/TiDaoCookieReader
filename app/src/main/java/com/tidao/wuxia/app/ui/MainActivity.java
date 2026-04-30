@@ -1062,6 +1062,56 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                                 Toast.makeText(MainActivity.this,
                                         "邮箱测试发送失败，请检查邮箱地址或稍后重试",
                                         Toast.LENGTH_LONG).show();
+                            } else if (message != null && message.contains("角色冲突")) {
+                                appendLog("✗ " + message);
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("角色冲突")
+                                        .setMessage(message + "\n\n是否用当前角色覆盖？")
+                                        .setPositiveButton("覆盖", (dialog, which) -> {
+                                            appendLog("用户选择覆盖，重新上传中...");
+                                            try {
+                                                JSONObject roleParams = new JSONObject();
+                                                roleParams.put("area", roleInfo.area);
+                                                roleParams.put("playername", roleInfo.playername);
+                                                roleParams.put("roleid", roleInfo.roleid);
+                                                String rawUin = cookieData.uin;
+                                                if (rawUin != null && rawUin.startsWith("o0")) {
+                                                    rawUin = rawUin.substring(2);
+                                                }
+                                                roleParams.put("uin", rawUin != null ? rawUin : "");
+                                                roleParams.put("roleLevel", roleInfo.roleLevel);
+                                                roleParams.put("roleJob", roleInfo.roleJob);
+                                                roleParams.put("serverName", roleInfo.serverName);
+                                                roleParams.put("areaName", roleInfo.areaName);
+                                                roleParams.put("areaId", roleInfo.areaId);
+
+                                                FcUploader.uploadWithOverwrite(accountName, cookieData.toCookieString(), roleParams,
+                                                        prefsManager.getSckey(), prefsManager.getOwner(), prefsManager.getEmail(),
+                                                        mainHandler, new FcUploader.UploadCallback() {
+                                                            @Override
+                                                            public void onSuccess(String status, String name) {
+                                                                btnCopyAll.setEnabled(true);
+                                                                btnCopyAll.setText("③ 上传到云端");
+                                                                appendLog("✓ 覆盖上传成功：" + name);
+                                                                Toast.makeText(MainActivity.this, "覆盖成功！角色已更新：" + name, Toast.LENGTH_LONG).show();
+                                                            }
+                                                            @Override
+                                                            public void onFailed(String msg) {
+                                                                btnCopyAll.setEnabled(true);
+                                                                btnCopyAll.setText("③ 上传到云端");
+                                                                appendLog("✗ 覆盖上传失败：" + msg);
+                                                                Toast.makeText(MainActivity.this, "覆盖失败：" + msg, Toast.LENGTH_LONG).show();
+                                                            }
+                                                        });
+                                            } catch (Exception ex) {
+                                                btnCopyAll.setEnabled(true);
+                                                btnCopyAll.setText("③ 上传到云端");
+                                                appendLog("✗ 覆盖请求构建失败：" + ex.getMessage());
+                                                Toast.makeText(MainActivity.this, "覆盖请求构建失败", Toast.LENGTH_SHORT).show();
+                                            }
+                                        })
+                                        .setNegativeButton("取消", null)
+                                        .show();
                             } else {
                                 appendLog("✗ 上传失败：" + message);
                                 Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();

@@ -88,6 +88,14 @@ public final class FcUploader {
                 } else if (code == 400) {
                     Log.e(TAG, "参数错误: HTTP 400, body=" + truncateBody(respBody));
                     postFailed(mainHandler, callback, "请求参数错误：" + respBody);
+                } else if (code == 409) {
+                    String detail = "一个QQ号只能绑定一个角色";
+                    try {
+                        JSONObject errorJson = new JSONObject(respBody);
+                        detail = errorJson.optString("detail", detail);
+                    } catch (Exception ignored) {}
+                    Log.w(TAG, "角色冲突: HTTP 409, detail=" + detail);
+                    postFailed(mainHandler, callback, "角色冲突：" + detail);
                 } else {
                     Log.e(TAG, "上传失败: HTTP " + code + ", body=" + truncateBody(respBody));
                     postFailed(mainHandler, callback, "上传失败（HTTP " + code + "）：" + truncateBody(respBody));
@@ -95,6 +103,83 @@ public final class FcUploader {
             } catch (Exception e) {
                 Log.e(TAG, "上传异常", e);
                 postFailed(mainHandler, callback, "上传异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
+    }
+
+    /**
+     * 与 {@link #upload} 完全一致，额外在请求体中附加 overwrite=true。
+     */
+    public static void uploadWithOverwrite(String accountName, String cookieString,
+                              JSONObject roleParams, String sckey, String owner, String email,
+                              Handler mainHandler, UploadCallback callback) {
+        new Thread(() -> {
+            if (BuildConfig.DEBUG) Log.d(TAG, "开始覆盖上传: account=" + maskName(accountName));
+            HttpURLConnection conn = null;
+            try {
+                JSONObject body = buildUploadBody(accountName, cookieString, roleParams, sckey, owner, email);
+                body.put("overwrite", true);
+
+                byte[] postData = body.toString().getBytes("UTF-8");
+
+                URL url = new URL(BuildConfig.UPLOAD_COOKIE_URL);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+                conn.setDoOutput(true);
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(postData);
+                }
+
+                int code = conn.getResponseCode();
+                if (BuildConfig.DEBUG) Log.d(TAG, "响应: HTTP " + code);
+                java.io.InputStream is = (code >= 200 && code < 300)
+                        ? conn.getInputStream() : conn.getErrorStream();
+                StringBuilder sb = new StringBuilder();
+                if (is != null) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+                }
+                String respBody = sb.toString();
+                if (BuildConfig.DEBUG) Log.d(TAG, "响应体: " + truncateBody(respBody));
+
+                if (code == 200) {
+                    JSONObject resp = new JSONObject(respBody);
+                    String status = resp.optString("status", "");
+                    String name = resp.optString("name", accountName);
+                    Log.i(TAG, "覆盖上传成功: status=" + status + ", name=" + maskName(name));
+                    mainHandler.post(() -> {
+                        if (callback != null) callback.onSuccess(status, name);
+                    });
+                } else if (code == 403) {
+                    Log.e(TAG, "认证失败: HTTP 403, body=" + truncateBody(respBody));
+                    postFailed(mainHandler, callback, "认证失败（unauthorized）");
+                } else if (code == 400) {
+                    Log.e(TAG, "参数错误: HTTP 400, body=" + truncateBody(respBody));
+                    postFailed(mainHandler, callback, "请求参数错误：" + respBody);
+                } else if (code == 409) {
+                    String detail = "一个QQ号只能绑定一个角色";
+                    try {
+                        JSONObject errorJson = new JSONObject(respBody);
+                        detail = errorJson.optString("detail", detail);
+                    } catch (Exception ignored) {}
+                    Log.w(TAG, "角色冲突: HTTP 409, detail=" + detail);
+                    postFailed(mainHandler, callback, "角色冲突：" + detail);
+                } else {
+                    Log.e(TAG, "覆盖上传失败: HTTP " + code + ", body=" + truncateBody(respBody));
+                    postFailed(mainHandler, callback, "覆盖上传失败（HTTP " + code + "）：" + truncateBody(respBody));
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "覆盖上传异常", e);
+                postFailed(mainHandler, callback, "覆盖上传异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             } finally {
                 if (conn != null) conn.disconnect();
             }
