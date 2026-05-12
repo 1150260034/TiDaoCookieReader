@@ -14,6 +14,8 @@ public final class FcUploader {
 
     private static final String TAG = "FcUploader";
 
+    public static final int ERROR_ROLE_CONFLICT = 1001;
+
     private static final int MAX_LOG_BODY_LEN = 200;
 
     private FcUploader() {}
@@ -33,17 +35,38 @@ public final class FcUploader {
 
     public interface UploadCallback {
         void onSuccess(String status, String name);
-        void onFailed(String message);
+        void onFailed(int errorCode, String message);
     }
 
     public static void upload(String accountName, String cookieString,
                               JSONObject roleParams, String sckey, String owner, String email,
                               Handler mainHandler, UploadCallback callback) {
+        doUpload(accountName, cookieString, roleParams, sckey, owner, email,
+                false, "上传", mainHandler, callback);
+    }
+
+    /**
+     * 与 {@link #upload} 完全一致，额外在请求体中附加 overwrite=true。
+     */
+    public static void uploadWithOverwrite(String accountName, String cookieString,
+                              JSONObject roleParams, String sckey, String owner, String email,
+                              Handler mainHandler, UploadCallback callback) {
+        doUpload(accountName, cookieString, roleParams, sckey, owner, email,
+                true, "覆盖上传", mainHandler, callback);
+    }
+
+    private static void doUpload(String accountName, String cookieString,
+                                  JSONObject roleParams, String sckey, String owner, String email,
+                                  boolean overwrite, String logLabel,
+                                  Handler mainHandler, UploadCallback callback) {
         new Thread(() -> {
-            if (BuildConfig.DEBUG) Log.d(TAG, "开始上传: account=" + maskName(accountName));
+            if (BuildConfig.DEBUG) Log.d(TAG, "开始" + logLabel + ": account=" + maskName(accountName));
             HttpURLConnection conn = null;
             try {
                 JSONObject body = buildUploadBody(accountName, cookieString, roleParams, sckey, owner, email);
+                if (overwrite) {
+                    body.put("overwrite", true);
+                }
 
                 byte[] postData = body.toString().getBytes("UTF-8");
 
@@ -78,27 +101,41 @@ public final class FcUploader {
                     JSONObject resp = new JSONObject(respBody);
                     String status = resp.optString("status", "");
                     String name = resp.optString("name", accountName);
-                    Log.i(TAG, "上传成功: status=" + status + ", name=" + maskName(name));
+                    Log.i(TAG, logLabel + "成功: status=" + status + ", name=" + maskName(name));
                     mainHandler.post(() -> {
                         if (callback != null) callback.onSuccess(status, name);
                     });
                 } else if (code == 403) {
                     Log.e(TAG, "认证失败: HTTP 403, body=" + truncateBody(respBody));
-                    postFailed(mainHandler, callback, "认证失败（unauthorized）");
+                    postFailed(mainHandler, callback, 0, "认证失败（unauthorized）");
                 } else if (code == 400) {
                     Log.e(TAG, "参数错误: HTTP 400, body=" + truncateBody(respBody));
-                    postFailed(mainHandler, callback, "请求参数错误：" + respBody);
+                    postFailed(mainHandler, callback, 0, "请求参数错误：" + truncateBody(respBody));
+                } else if (code == 409) {
+                    handle409Conflict(respBody, mainHandler, callback);
                 } else {
-                    Log.e(TAG, "上传失败: HTTP " + code + ", body=" + truncateBody(respBody));
-                    postFailed(mainHandler, callback, "上传失败（HTTP " + code + "）：" + truncateBody(respBody));
+                    Log.e(TAG, logLabel + "失败: HTTP " + code + ", body=" + truncateBody(respBody));
+                    postFailed(mainHandler, callback, 0, logLabel + "失败（HTTP " + code + "）：" + truncateBody(respBody));
                 }
             } catch (Exception e) {
-                Log.e(TAG, "上传异常", e);
-                postFailed(mainHandler, callback, "上传异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+                Log.e(TAG, logLabel + "异常", e);
+                postFailed(mainHandler, callback, 0, logLabel + "异常：" + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
             } finally {
                 if (conn != null) conn.disconnect();
             }
         }).start();
+    }
+
+    private static void handle409Conflict(String respBody, Handler mainHandler, UploadCallback callback) {
+        String detail = "一个QQ号只能绑定一个角色";
+        try {
+            JSONObject errorJson = new JSONObject(respBody);
+            detail = errorJson.optString("detail", detail);
+        } catch (Exception ignored) {}
+        Log.w(TAG, "角色冲突: HTTP 409, detail=" + detail);
+        mainHandler.post(() -> {
+            if (callback != null) callback.onFailed(ERROR_ROLE_CONFLICT, "角色冲突：" + detail);
+        });
     }
 
     static JSONObject buildUploadBody(String accountName, String cookieString,
@@ -114,9 +151,9 @@ public final class FcUploader {
         return body;
     }
 
-    private static void postFailed(Handler mainHandler, UploadCallback callback, String msg) {
+    private static void postFailed(Handler mainHandler, UploadCallback callback, int errorCode, String msg) {
         mainHandler.post(() -> {
-            if (callback != null) callback.onFailed(msg);
+            if (callback != null) callback.onFailed(errorCode, msg);
         });
     }
 }
