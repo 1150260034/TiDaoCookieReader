@@ -4,7 +4,7 @@
     <!-- disabled 态：降低饱和度，灰紫色 -->
     <item android:state_enabled="false">
         <shape>
-            <solid android:color="#44504878" />
+            <solid android:color="#44454080" />
             <corners android:radius="12dp" />
         </shape>
     </item>

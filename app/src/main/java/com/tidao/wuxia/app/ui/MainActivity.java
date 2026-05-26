@@ -208,17 +208,19 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         if (!isRooted) {
             appendLog("⚠️ 警告: 未检测到Root权限!");
             appendLog("请在模拟器设置中开启Root");
-            appendLog("否则无法读取Cookie");
             updateStatus("⚠️ 需要开启Root");
 
-            // 禁用读取按钮
+            // 禁用所有操作按钮
+            btnInstallTiandao.setEnabled(false);
+            btnOpenTianDao.setEnabled(false);
             btnReadCookie.setEnabled(false);
-            btnReadCookie.setText("需要Root权限");
+            btnUpload.setEnabled(false);
 
             Toast.makeText(this, "请先开启模拟器Root权限", Toast.LENGTH_LONG).show();
         } else {
             appendLog("✓ Root权限检测正常");
             showTutorial();
+            preloadAccountInfo();
         }
     }
 
@@ -268,6 +270,66 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         appendLog("2. 等待加载完成后点绑定角色");
         appendLog("3. 选择角色后点确认");
         appendLog("====================");
+    }
+
+    /**
+     * 启动时静默预读取账号信息（Cookie + 角色），仅更新状态栏展示，不设置全局状态
+     */
+    private void preloadAccountInfo() {
+        updateStatus("正在检测账号...");
+        WebViewCookieReader.readCookies(this, new WebViewCookieReader.OnCookieReadListener() {
+            @Override
+            public void onCookieReadSuccess(WebViewCookieReader.CookieData data) {
+                mainHandler.post(() -> {
+                    appendLog("✓ 检测到已登录账号");
+                    // 用独立实例读取角色，避免污染全局 gameDatabaseReader 状态
+                    GameDatabaseReader preloadReader = new GameDatabaseReader();
+                    preloadReader.setCurrentUin(data.uin);
+                    preloadReader.readRoleInfo(MainActivity.this, new GameDatabaseReader.OnRoleInfoReadListener() {
+                        @Override
+                        public void onRoleInfoReadSuccess(GameDatabaseReader.RoleInfo info) {
+                            mainHandler.post(() -> {
+                                if (info.allRoles != null && !info.allRoles.isEmpty()) {
+                                    GameDatabaseReader.SingleRole role = info.allRoles.get(0);
+                                    String statusText = "✅ " + role.playername
+                                            + " [" + role.areaName + "-" + role.serverName + "]";
+                                    if (info.allRoles.size() > 1) {
+                                        statusText += "（共" + info.allRoles.size() + "个角色）";
+                                    }
+                                    updateStatus(statusText);
+                                    appendLog("当前绑定角色: " + role.playername);
+                                    appendLog("👉 请点击「读取 Cookie」继续操作");
+                                } else {
+                                    updateStatus("⚠️ 已登录但未找到角色");
+                                    appendLog("请先在天刀助手中打开「周周载愿」页面");
+                                }
+                            });
+                        }
+
+                        @Override
+                        public void onRoleInfoReadFailed(String error) {
+                            mainHandler.post(() -> {
+                                updateStatus("⚠️ 已登录但未找到角色信息");
+                                appendLog("角色预读取: " + error);
+                                appendLog("请先在天刀助手中打开「周周载愿」页面");
+                            });
+                        }
+                    });
+                });
+            }
+
+            @Override
+            public void onCookieReadFailed(String error) {
+                mainHandler.post(() -> {
+                    if (error.contains("周周载愿") || error.contains("不存在")) {
+                        updateStatus("⚠️ 请先在天刀助手中打开「周周载愿」");
+                    } else {
+                        updateStatus("⚠️ " + error);
+                    }
+                    appendLog("预检测: " + error);
+                });
+            }
+        });
     }
 
     /**

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 辅助按钮：主题色描边 + 半透明底色，明确可点击 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#1A6C63FF" />
+    <solid android:color="#1A5B52E0" />
     <stroke android:width="1dp" android:color="@color/color_primary" />
     <corners android:radius="12dp" />
 </shape>
