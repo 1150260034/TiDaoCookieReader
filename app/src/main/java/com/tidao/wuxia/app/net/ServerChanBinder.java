@@ -168,48 +168,19 @@ public final class ServerChanBinder {
 
     private static void validateSckeyAsync(String sckey, PrefsManager prefsManager,
                                            Handler mainHandler, BindCallback callback) {
+        // 不再发送验证消息，避免消耗 Server酱 每日消息配额（免费版限 5 条）。
+        // 后端 update-cookie 已移除 validate_sendkey，仅做格式校验。
+        // 无效 key 会在后端实际通知时被发现，绑定本身不受影响。
         new Thread(() -> {
-            HttpURLConnection connection = null;
             try {
-                URL url = new URL("https://sctapi.ftqq.com/" + sckey + ".send");
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setConnectTimeout(15000);
-                connection.setReadTimeout(15000);
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-                String body = "title=" + encode("绑定验证") + "&desp=" + encode("天刀签到助手绑定成功");
-                OutputStream outputStream = connection.getOutputStream();
-                outputStream.write(body.getBytes("UTF-8"));
-                outputStream.close();
-
-                InputStream stream = connection.getResponseCode() >= 400
-                        ? connection.getErrorStream() : connection.getInputStream();
-                String response = readAll(stream);
-                JSONObject json = new JSONObject(response);
-                if (json.optInt("code", -1) == 0) {
-                    prefsManager.saveSckey(sckey);
-                    mainHandler.post(() -> {
-                        if (callback != null) {
-                            callback.onSuccess(sckey);
-                        }
-                    });
-                    return;
+                Thread.sleep(300); // 短暂延迟给用户"正在验证"的体感
+            } catch (InterruptedException ignored) {}
+            prefsManager.saveSckey(sckey);
+            mainHandler.post(() -> {
+                if (callback != null) {
+                    callback.onSuccess(sckey);
                 }
-                String reason = json.optString("message");
-                if (isBlank(reason)) {
-                    reason = json.optJSONObject("data") != null
-                            ? json.optJSONObject("data").optString("error") : "SendKey 验证失败";
-                }
-                postFailed(mainHandler, callback, isBlank(reason) ? "SendKey 验证失败" : reason);
-            } catch (Exception e) {
-                postFailed(mainHandler, callback, isBlank(e.getMessage()) ? "网络错误" : e.getMessage());
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
+            });
         }).start();
     }
 
