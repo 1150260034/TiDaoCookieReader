@@ -39,3 +39,6 @@ Thumbs.db
 
 # CI release artifacts
 ci-release-apk/
+
+# Local build scripts (contain env-specific URLs)
+build-local.ps1

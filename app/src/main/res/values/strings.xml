@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">天刀Cookie助手</string>
+    <string name="app_subtitle">一键提取Cookie + 角色信息</string>
     <string name="check_update">检查更新</string>
     <string name="checking_update">检查中...</string>
     <string name="latest_version">当前已是最新版本</string>
@@ -7,4 +8,14 @@
     <string name="check_update_failed_message">无法连接到更新服务器，您可以前往发布页面手动查看最新版本。</string>
     <string name="open_release_page">打开发布页面</string>
     <string name="cancel_text">取消</string>
+    
+    <string name="status_waiting">⏳ 等待操作</string>
+    <string name="action_open_tiandao">🎮 打开天刀助手</string>
+    <string name="action_read_cookie">🔍 读取 Cookie</string>
+    <string name="action_upload_cloud">☁️ 上传到云端</string>
+    <string name="action_install_tiandao">📥 安装天刀助手</string>
+    
+    <string name="tutorial_title">📘 使用步骤</string>
+    <string name="tutorial_content">1. 首次使用请先「安装天刀助手」\n2. 点击「打开天刀助手」，扫码登录QQ\n3. 在助手中点击「周周载愿」按钮\n4. 切回本App，点击「读取 Cookie」\n5. 选择角色后，点击「上传到云端」</string>
+    <string name="log_title">📝 操作日志</string>
 </resources>

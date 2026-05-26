@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1a1a2e"
+    android:background="@color/color_background"
     android:padding="16dp"
     tools:context=".ui.MainActivity">
 
@@ -13,15 +13,16 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- 标题 -->
+        <!-- Header -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="4dp"
-            android:text="天刀助手 Cookie + 角色信息"
-            android:textColor="#ffffff"
-            android:textSize="22sp"
+            android:text="@string/app_name"
+            android:textColor="@color/color_primary_text"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
@@ -29,150 +30,191 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:layout_marginBottom="4dp"
-            android:text="一键提取Cookie+角色信息"
-            android:textColor="#888888"
-            android:textSize="13sp" />
+            android:text="@string/app_subtitle"
+            android:textColor="@color/color_secondary_text"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/tv_version"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:layout_marginBottom="24dp"
+            tools:text="v1.1.0"
+            android:textColor="@color/color_hint_text"
+            android:textSize="12sp" />
+
+        <!-- Status Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
             android:layout_marginBottom="16dp"
-            android:text="v1.1.0"
-            android:textColor="#666666"
-            android:textSize="11sp" />
-
-        <!-- 状态显示 -->
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#2d2d44"
-            android:gravity="center"
-            android:layout_marginBottom="12dp"
-            android:padding="12dp"
-            android:text="准备就绪"
-            android:textColor="#00ff88"
-            android:textSize="16sp" />
-
-        <!-- 按钮区域 -->
-        <Button
-            android:id="@+id/btn_install_tiandao"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#888888"
-            android:layout_marginBottom="8dp"
-            android:text="安装天刀助手"
-            android:textColor="#ffffff" />
-
-        <Button
-            android:id="@+id/btn_open_tiandao"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#ff8800"
-            android:layout_marginBottom="8dp"
-            android:text="① 打开天刀助手"
-            android:textColor="#ffffff" />
-
-        <Button
-            android:id="@+id/btn_read_cookie"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#aa44ff"
-            android:layout_marginBottom="8dp"
-            android:text="② 读取当前Cookie"
-            android:textColor="#ffffff" />
-
-        <Button
-            android:id="@+id/btn_copy_all"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#0088ff"
-            android:enabled="false"
-            android:layout_marginBottom="8dp"
-            android:text="③ 上传到云端"
-            android:textColor="#ffffff" />
-
-        <TextView
-            android:id="@+id/tv_sckey_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginBottom="4dp"
-            android:padding="8dp"
-            android:text="Server酱：未绑定"
-            android:textColor="#ff6666"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/tv_email_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginBottom="4dp"
-            android:padding="8dp"
-            android:text="邮箱提醒：未绑定（可选）"
-            android:textColor="#888888"
-            android:textSize="12sp" />
-
-        <Button
-            android:id="@+id/btn_check_update"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#334455"
-            android:layout_marginBottom="16dp"
-            android:text="@string/check_update"
-            android:textColor="#cccccc" />
-
-        <!-- 使用教程 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="使用步骤"
-            android:textColor="#ffffff"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#2d2d44"
-            android:layout_marginBottom="12dp"
-            android:lineSpacingExtra="4dp"
-            android:padding="12dp"
-            android:text="1. 首次：点「安装天刀助手」下载\n2. 点击「①打开天刀助手」\n3. 在天刀助手中扫码登录QQ\n4. 点击「周周载愿」按钮\n5. 切回本App，点「②读取Cookie」\n6. 自动读取Cookie+角色信息\n7. 点击「③上传到云端」"
-            android:textColor="#aaaaaa"
-            android:textSize="12sp" />
-
-        <!-- 日志区域 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:text="操作日志:"
-            android:textColor="#ffffff"
-            android:textSize="12sp" />
-
-        <ScrollView
-            android:id="@+id/scroll_log"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:background="#2d2d44"
-            android:padding="8dp">
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tv_log"
+                android:id="@+id/tv_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:text=""
-                android:textColor="#00ff88"
-                android:textSize="10sp" />
+                android:background="@drawable/bg_status_bar"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="@string/status_waiting"
+                android:textColor="@color/color_secondary_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+                
+            <TextView
+                android:id="@+id/tv_sckey_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_marginTop="8dp"
+                android:text="Server酱：未绑定"
+                android:textColor="@color/color_warning"
+                android:textSize="12sp" />
+                
+        </LinearLayout>
 
-        </ScrollView>
+        <!-- Actions Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btn_open_tiandao"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_button_primary"
+                android:layout_marginBottom="12dp"
+                android:text="@string/action_open_tiandao"
+                android:textSize="16sp"
+                android:textColor="@color/color_primary_text"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/btn_read_cookie"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_button_primary"
+                android:layout_marginBottom="12dp"
+                android:text="@string/action_read_cookie"
+                android:textSize="16sp"
+                android:textColor="@color/color_primary_text"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/btn_upload"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_button_primary"
+                android:enabled="false"
+                android:text="@string/action_upload_cloud"
+                android:textSize="16sp"
+                android:textColor="@color/text_button_primary"
+                android:stateListAnimator="@null" />
+
+        </LinearLayout>
+
+        <!-- Tools Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btn_install_tiandao"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_secondary"
+                android:layout_marginBottom="12dp"
+                android:text="@string/action_install_tiandao"
+                android:textColor="@color/color_primary"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/btn_check_update"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_secondary"
+                android:text="@string/check_update"
+                android:textColor="@color/color_primary"
+                android:stateListAnimator="@null" />
+
+        </LinearLayout>
+
+        <!-- Tutorial Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/tutorial_title"
+                android:textColor="@color/color_primary_text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="6dp"
+                android:text="@string/tutorial_content"
+                android:textColor="@color/color_secondary_text"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <!-- Log Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/log_title"
+                android:textColor="@color/color_primary_text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <ScrollView
+                android:id="@+id/scroll_log"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@drawable/bg_status_bar"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tv_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:text=""
+                    android:textColor="@color/color_success"
+                    android:textSize="11sp" />
+
+            </ScrollView>
+        </LinearLayout>
 
     </LinearLayout>
-
 </ScrollView>

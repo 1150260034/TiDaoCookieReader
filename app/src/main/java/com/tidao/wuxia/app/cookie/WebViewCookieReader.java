@@ -83,12 +83,39 @@ public class WebViewCookieReader {
     }
 
     /**
+     * 检查 Cookie 数据库文件是否存在
+     */
+    private static boolean checkCookieDatabaseExists() {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "su", "-c", "test -f " + TARGET_COOKIE_DB + " && echo exists"
+            });
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+            String result = reader.readLine();
+            reader.close();
+            process.waitFor();
+            return "exists".equals(result != null ? result.trim() : "");
+        } catch (Exception e) {
+            Log.e(TAG, "检查 Cookie 数据库是否存在失败", e);
+            return false;
+        }
+    }
+
+    /**
      * 使用 su 命令读取天刀助手的 Cookie 数据库
      */
     public static void readCookies(Context context, OnCookieReadListener listener) {
         new Thread(() -> {
             try {
                 Log.d(TAG, "开始读取 Cookie，使用 su 命令...");
+
+                // 0. 先检查 Cookie 数据库文件是否存在
+                if (!checkCookieDatabaseExists()) {
+                    Log.w(TAG, "Cookie 数据库文件不存在: " + TARGET_COOKIE_DB);
+                    listener.onCookieReadFailed("Cookie 数据库不存在，请先在天刀助手中打开「周周载愿」页面");
+                    return;
+                }
 
                 // 1. 使用 su 命令复制 Cookie 数据库到临时位置
                 boolean copySuccess = copyCookieDatabaseWithSu();
@@ -106,7 +133,7 @@ public class WebViewCookieReader {
                 if (data != null && data.isComplete()) {
                     listener.onCookieReadSuccess(data);
                 } else {
-                    listener.onCookieReadFailed("Cookie 不完整或读取失败");
+                    listener.onCookieReadFailed("Cookie 数据不完整，请重新在天刀助手中访问「周周载愿」页面");
                 }
 
             } catch (Exception e) {
