@@ -157,4 +157,60 @@ public class UpdateCheckerTest {
         // "Build" without digits
         assertNull(VersionUtils.extractBuildNumber("Build without number"));
     }
+
+    // ========== isCertificateExpired / isCertificateExpiredException ==========
+
+    @Test
+    public void isCertificateExpired_sslHandshakeWithExpiredMessage_returnsTrue() throws Exception {
+        // 模拟 OpenJDK 抛出的 SSLHandshakeException，消息含 "Certificate expired"
+        javax.net.ssl.SSLHandshakeException e =
+                new javax.net.ssl.SSLHandshakeException("java.security.cert.CertPathValidatorException: Certificate expired");
+        assertTrue(VersionUtils.isCertificateExpired(e));
+        assertTrue(UpdateChecker.isCertificateExpiredException(e));
+    }
+
+    @Test
+    public void isCertificateExpired_conscryptExpiredMessage_returnsTrue() {
+        // Conscrypt（Android 默认安全提供方）抛出的消息可能是 "certificate has expired"
+        javax.net.ssl.SSLException e = new javax.net.ssl.SSLException("Connection closed by peer; certificate has expired");
+        assertTrue(VersionUtils.isCertificateExpired(e));
+    }
+
+    @Test
+    public void isCertificateExpired_certExpiredShortForm_returnsTrue() {
+        javax.net.ssl.SSLException e = new javax.net.ssl.SSLException("Cert expired");
+        assertTrue(VersionUtils.isCertificateExpired(e));
+    }
+
+    @Test
+    public void isCertificateExpired_wrappedInCauseChain_returnsTrue() {
+        // 实际场景：SSLException 常被包装在 IOException/RuntimeException 的 cause 链里
+        javax.net.ssl.SSLHandshakeException ssl =
+                new javax.net.ssl.SSLHandshakeException("Certificate expired");
+        RuntimeException wrapper = new RuntimeException("Download precheck failed", ssl);
+        // 顶层不是 SSL 异常，但 cause 链里有
+        assertTrue(VersionUtils.isCertificateExpired(wrapper));
+        assertTrue(UpdateChecker.isCertificateExpiredException(wrapper));
+    }
+
+    @Test
+    public void isCertificateExpired_sslButNotExpired_returnsFalse() {
+        // SSL 异常但消息与证书过期无关（如协议不匹配）
+        javax.net.ssl.SSLHandshakeException e =
+                new javax.net.ssl.SSLHandshakeException("Protocol error: connection closed");
+        assertFalse(VersionUtils.isCertificateExpired(e));
+    }
+
+    @Test
+    public void isCertificateExpired_nonSslException_returnsFalse() {
+        // 普通网络异常（超时、403 等）不应被误判为证书过期
+        assertFalse(VersionUtils.isCertificateExpired(new java.net.SocketTimeoutException("timeout")));
+        assertFalse(VersionUtils.isCertificateExpired(new RuntimeException("HTTP 403")));
+    }
+
+    @Test
+    public void isCertificateExpired_nullInput_returnsFalse() {
+        assertFalse(VersionUtils.isCertificateExpired(null));
+        assertFalse(UpdateChecker.isCertificateExpiredException(null));
+    }
 }

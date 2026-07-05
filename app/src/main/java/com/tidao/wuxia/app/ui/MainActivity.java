@@ -39,6 +39,8 @@ import com.tidao.wuxia.app.utils.UpdateChecker;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * 主界面 - Cookie读取器
@@ -729,7 +731,16 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
     }
 
     /**
-     * 使用 DownloadManager 下载 APK 并在完成后触发安装；失败时给出兜底链接
+     * 使用 DownloadManager 下载 APK 并在完成后触发安装；失败时给出兜底链接。
+     * <p>
+     * 下载前先在后台线程用 HEAD 请求预检 APK 下载链接：
+     * - 证书过期（SSLException 含 "certificate expired"）→ 弹专项提示，告知用户联系管理员，不交给 DownloadManager
+     * - 其他失败 → 走现有 showDownloadFailedDialog 兜底
+     * - 预检通过 → 正常交给 DownloadManager 下载
+     * <p>
+     * 之所以预检：DownloadManager 是系统组件，TLS 失败时 COLUMN_REASON 只给
+     * ERROR_HTTP_DATA_ERROR 之类的粗码，拿不到"证书过期"语义；HttpURLConnection
+     * 才能从 SSLException 精确识别。
      */
     private void startApkDownload(String apkDownloadUrl, String releasePageUrl) {
         // 检查是否允许安装未知来源应用
@@ -753,6 +764,62 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             return;
         }
 
+        final String finalApkUrl = apkDownloadUrl;
+        final String finalReleasePageUrl = releasePageUrl;
+
+        Toast.makeText(this, "正在校验下载链接...", Toast.LENGTH_SHORT).show();
+        appendLog("正在校验下载链接...");
+
+        // 后台线程预检，避免阻塞 UI
+        new Thread(() -> {
+            Throwable precheckError = precheckDownloadUrl(finalApkUrl);
+            mainHandler.post(() -> {
+                if (precheckError == null) {
+                    // 预检通过，交给 DownloadManager 下载
+                    enqueueApkDownload(finalApkUrl, finalReleasePageUrl);
+                } else if (UpdateChecker.isCertificateExpiredException(precheckError)) {
+                    Log.w(TAG, "下载链接证书过期: " + precheckError.getMessage());
+                    appendLog("下载失败：更新服务证书已过期，请联系管理员");
+                    showCertExpiredDialog(finalReleasePageUrl);
+                } else {
+                    Log.w(TAG, "下载链接预检失败: " + precheckError.getMessage());
+                    appendLog("下载链接校验失败: " + precheckError.getMessage());
+                    showDownloadFailedDialog(finalReleasePageUrl);
+                }
+            });
+        }).start();
+    }
+
+    /**
+     * HEAD 预检 APK 下载链接，返回 null 表示可正常下载，否则返回失败异常。
+     * 只请求响应头，不下载体，开销可忽略。
+     */
+    private Throwable precheckDownloadUrl(String apkDownloadUrl) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(apkDownloadUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setInstanceFollowRedirects(true);
+            int code = conn.getResponseCode();
+            // 2xx 视为可下载；3xx 已由 followRedirects 处理；非 2xx 返回一个通用异常走兜底
+            if (code >= 200 && code < 300) {
+                return null;
+            }
+            return new RuntimeException("HTTP " + code);
+        } catch (Exception e) {
+            return e;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /**
+     * 实际交给 DownloadManager 下载（预检通过后调用）
+     */
+    private void enqueueApkDownload(String apkDownloadUrl, String releasePageUrl) {
         try {
             // 清理上次残留的 APK 文件（若外部存储可用）
             File externalDir = getExternalFilesDir(null);
@@ -892,6 +959,21 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                 .setMessage("下载更新包失败，请前往发布页面手动下载安装。\n\n" + releasePageUrl)
                 .setPositiveButton("打开下载页", (d, w) -> openReleasePage(releasePageUrl))
                 .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /**
+     * 下载预检发现证书过期时弹出专项对话框。
+     * OSS 自定义域名的免费 DV 证书有效期短，过期后无法安全下载，
+     * 这类错误用户无法自行解决，需明确告知联系管理员续期。
+     */
+    private void showCertExpiredDialog(String releasePageUrl) {
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.update_cert_expired))
+                .setMessage(getString(R.string.update_cert_expired_message))
+                .setPositiveButton(getString(R.string.i_know), null)
+                .setNeutralButton(getString(R.string.open_release_page),
+                        (d, w) -> openReleasePage(releasePageUrl))
                 .show();
     }
 

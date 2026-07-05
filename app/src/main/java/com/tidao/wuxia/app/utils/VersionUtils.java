@@ -85,4 +85,38 @@ class VersionUtils {
             return null;
         }
     }
+
+    /**
+     * 判断一个异常（及其 cause 链）是否表示 TLS 证书已过期。
+     * <p>
+     * 用于 APK 下载预检：OSS 自定义域名的免费 DV 证书有效期短，
+     * 过期后 DownloadManager 下载会失败，但失败原因码粗糙（ERROR_HTTP_DATA_ERROR），
+     * 用户无法得知是证书过期。这里通过 javax.net.ssl.SSLException 的消息精确识别。
+     * <p>
+     * 仅依赖 JDK 类型，不依赖 Android 运行时，可在本地 JVM 单测。
+     *
+     * @param t 下载预检时抛出的异常，可为 null
+     * @return true 表示该异常由证书过期引起
+     */
+    static boolean isCertificateExpired(Throwable t) {
+        Throwable cur = t;
+        while (cur != null) {
+            String name = cur.getClass().getName();
+            // javax.net.ssl.SSLException 及其子类（SSLHandshakeException 等）
+            if (name.startsWith("javax.net.ssl.SSL")) {
+                String msg = cur.getMessage();
+                if (msg != null) {
+                    String lower = msg.toLowerCase();
+                    // 覆盖 OpenJDK ("Certificate expired") 与 Conscrypt ("certificate has expired") 消息
+                    if (lower.contains("certificate expired")
+                            || lower.contains("cert expired")
+                            || lower.contains("certificate has expired")) {
+                        return true;
+                    }
+                }
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
 }

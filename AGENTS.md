@@ -137,6 +137,17 @@ tag `v*` 或手动触发：
 - `.github/actions/android-build/action.yml`：设置 JDK 17 + Gradle，构建 APK，支持 Debug/Release 变体、BuildConfig 注入、release 签名。
 - `.github/actions/android-smoke-test/action.yml`：构建 Debug APK + SrgGactionEmulatorenvsetupAndroid 模拟器冒烟测试（API 30，5 分钟超时）。
 
+### 已知坑：OSS 自定义域名 TLS 证书过期
+
+App 检查更新时，云函数 `tidao-version-check`（`.private/cloud-function/index-signed.js`）返回的 `downloadUrl` 指向 OSS 自定义域名 `oss-tiandao.zyzl.link`（CNAME 直连 bucket `tidao-cookie-reader`，cn-hangzhou，无 CDN）。该域名用的是阿里云免费 DV 证书，**有效期仅 3 个月**，到期后会出现：
+
+- App 点「直接下载安装」→ `DownloadManager` TLS 握手失败 → 表现为"下载失败"，但失败原因码（`ERROR_HTTP_DATA_ERROR`）粗糙，用户无法判断是证书过期。
+- CI 链路（GitHub→OSS）一切正常，APK 和 `version.json` 都在，只是下载链接的 HTTPS 证书过期。
+
+**已做的防护**：`MainActivity.startApkDownload` 在交给 `DownloadManager` 前，先用 `HttpURLConnection` 做 HEAD 预检，捕获 `SSLException` 并通过 `VersionUtils.isCertificateExpiredException` 精确识别"证书过期"，弹出专项对话框告知用户「联系管理员续期」。识别逻辑覆盖 OpenJDK（`Certificate expired`）和 Conscrypt（`certificate has expired`）两种消息，单元测试见 `UpdateCheckerTest`。
+
+**续期路径**（管理员操作）：阿里云控制台 → SSL 证书 → 申请免费 DV 证书（域名 `oss-tiandao.zyzl.link`，DNS 自动验证）→ OSS bucket `tidao-cookie-reader` 传输管理 → 域名管理 → 更新证书。建议每 2.5 个月续一次，避免临到期才处理。
+
 ## 核心数据流
 
 ```text

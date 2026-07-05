@@ -8,6 +8,10 @@
     <string name="check_update_failed_message">无法连接到更新服务器，您可以前往发布页面手动查看最新版本。</string>
     <string name="open_release_page">打开发布页面</string>
     <string name="cancel_text">取消</string>
+    <string name="i_know">我知道了</string>
+    <string name="update_cert_expired">证书已过期</string>
+    <string name="update_cert_expired_message">更新服务的安全证书已过期，无法安全下载更新包。\n\n请联系管理员续期证书，或前往发布页手动下载安装。</string>
+    <string name="update_download_precheck_failed">下载链接校验失败</string>
     
     <string name="status_waiting">⏳ 等待操作</string>
     <string name="action_open_tiandao">🎮 打开天刀助手</string>
