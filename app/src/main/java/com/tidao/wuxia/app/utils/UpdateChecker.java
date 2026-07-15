@@ -388,12 +388,4 @@ public class UpdateChecker {
         return remoteBuildCode > BuildConfig.VERSION_CODE;
     }
 
-    /**
-     * 判断一个异常（及其 cause 链）是否表示 TLS 证书已过期。
-     * 供 UI 层在 APK 下载预检失败时调用，区分"证书过期"与普通网络错误。
-     * 委托 {@link VersionUtils#isCertificateExpired}。
-     */
-    public static boolean isCertificateExpiredException(Throwable t) {
-        return VersionUtils.isCertificateExpired(t);
-    }
 }
