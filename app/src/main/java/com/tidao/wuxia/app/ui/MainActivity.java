@@ -499,6 +499,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                             GameDatabaseReader.SingleRole role = data.allRoles.get(0);
                             roleInfo.playername = role.playername;
                             roleInfo.roleid = role.roleid;
+                            roleInfo.originalRoleId = role.originalRoleId;
                             roleInfo.roleLevel = role.roleLevel;
                             roleInfo.roleJob = role.roleJob;
                             roleInfo.serverName = role.serverName;
@@ -525,6 +526,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
      * 弹出角色选择对话框（单选）
      */
     private void showRoleSelectionDialog(java.util.List<GameDatabaseReader.SingleRole> roles) {
+        selectedRole = null;
         String[] items = new String[roles.size()];
 
         for (int i = 0; i < roles.size(); i++) {
@@ -547,6 +549,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
 
             roleInfo.playername = selectedRole.playername;
             roleInfo.roleid = selectedRole.roleid;
+            roleInfo.originalRoleId = selectedRole.originalRoleId;
             roleInfo.roleLevel = selectedRole.roleLevel;
             roleInfo.roleJob = selectedRole.roleJob;
             roleInfo.area = selectedRole.area;
@@ -1106,6 +1109,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleParams.put("area", roleInfo.area);
             roleParams.put("playername", roleInfo.playername);
             roleParams.put("roleid", roleInfo.roleid);
+            roleParams.put("originalRoleId", roleInfo.originalRoleId);
             String rawUin = cookieData.uin;
             if (rawUin != null && rawUin.startsWith("o0")) {
                 rawUin = rawUin.substring(2);

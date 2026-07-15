@@ -11,6 +11,7 @@ public class FcUploaderTest {
     public void buildUploadBody_includesEmail() throws Exception {
         JSONObject roleParams = new JSONObject();
         roleParams.put("uin", "10001");
+        roleParams.put("originalRoleId", "13844346729514225978");
 
         JSONObject body = FcUploader.buildUploadBody(
                 "角色",
@@ -26,6 +27,8 @@ public class FcUploaderTest {
         assertEquals("owner-1", body.getString("owner"));
         assertEquals("friend@qq.com", body.getString("email"));
         assertEquals("10001", body.getJSONObject("role_params").getString("uin"));
+        assertEquals("13844346729514225978",
+                body.getJSONObject("role_params").getString("originalRoleId"));
     }
 
     @Test

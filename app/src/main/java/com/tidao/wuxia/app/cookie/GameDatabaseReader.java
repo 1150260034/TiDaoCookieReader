@@ -43,6 +43,7 @@ public class GameDatabaseReader {
         public String areaName = "";
         public String playername = "";
         public String roleid = "";
+        public String originalRoleId = "";
         public String roleLevel = "";
         public String roleJob = "";
         public String serverName = "";
@@ -62,6 +63,7 @@ public class GameDatabaseReader {
         public String areaName = "";    // 大区名称 (f_areaName)
         public String playername = "";  // 角色名 (f_roleName)
         public String roleid = "";      // 角色ID (f_roleId)
+        public String originalRoleId = ""; // 完整角色ID (f_newOriginalRoleId)
         public String uin = "";         // QQ号 (f_uin)
         public String roleLevel = "";   // 角色等级 (f_stringLevel)
         public String roleJob = "";     // 职业 (f_roleJob)
@@ -371,7 +373,7 @@ public class GameDatabaseReader {
             }
 
             // 使用sqlite3命令行直接查询源数据库，返回所有匹配的角色
-            String query = "SELECT f_serverId, f_areaId, f_areaName, f_roleId, f_roleName, f_roleJob, f_serverName, f_uin, f_stringLevel, f_gameName FROM Role WHERE f_uin = \"" + currentUin + "\"";
+            String query = "SELECT f_serverId, f_areaId, f_areaName, f_roleId, f_roleName, f_roleJob, f_serverName, f_uin, f_stringLevel, f_gameName, f_newOriginalRoleId FROM Role WHERE f_uin = \"" + currentUin + "\"";
             String cmd = "su -c \"sqlite3 " + foundDbPath + " \\\"" + query + "\\\"\"";
             Log.d(TAG, "执行查询: " + cmd);
 
@@ -384,7 +386,7 @@ public class GameDatabaseReader {
             boolean firstRole = true;
             while ((line = reader.readLine()) != null) {
                 if (line != null && !line.isEmpty()) {
-                    String[] fields = line.split("\\|");
+                    String[] fields = line.split("\\|", -1);
                     if (fields.length >= 10) {
                         // 保存到allRoles列表
                         SingleRole role = new SingleRole();
@@ -392,6 +394,7 @@ public class GameDatabaseReader {
                         role.areaId = fields[1];
                         role.areaName = fields[2];
                         role.roleid = fields[3];
+                        role.originalRoleId = fields.length > 10 ? fields[10] : "";
                         role.playername = fields[4];
                         role.roleJob = fields[5];
                         role.serverName = fields[6];
@@ -404,6 +407,7 @@ public class GameDatabaseReader {
                             result.areaId = fields[1];
                             result.areaName = fields[2];
                             result.roleid = fields[3];
+                            result.originalRoleId = fields.length > 10 ? fields[10] : "";
                             result.playername = fields[4];
                             result.roleJob = fields[5];
                             result.serverName = fields[6];
