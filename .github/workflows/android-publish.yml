@@ -1,8 +1,9 @@
 name: Android Publish
 
-# 复用 Android CI 的冒烟测试结果，避免同一次 push 重复运行冒烟测试：
-# - android-build.yml 在 push 到 main/master 时已运行 validate 和 smoke-test
-# - 本 workflow 等待 Android CI 成功后直接执行 publish，不再重复跑冒烟测试
+# 复用 Android CI 的构建产物，避免同一次 push 重复构建 APK：
+# - android-build.yml 在 push 到 main/master 时已运行 validate、单元测试和 build，
+#   并上传 app-debug-apk artifact
+# - 本 workflow 等待 Android CI 成功后下载该 artifact 直接发版，不再重复构建
 # - branches 过滤确保只有 main/master 的 push 才会触发（fork PR 不会触发 publish）
 on:
   workflow_run:
@@ -43,20 +44,14 @@ jobs:
             git diff --name-only HEAD~1 HEAD | grep -qE '^(app/|build\.gradle$|settings\.gradle$|gradle\.properties$|gradle/|gradlew$|gradlew\.bat$|scripts/)' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup Android SDK
+      - name: Download Debug APK from Android CI
         if: steps.check-paths.outputs.changed == 'true'
-        uses: android-actions/setup-android@v3
-
-      - name: Build Debug APK
-        if: steps.check-paths.outputs.changed == 'true'
-        uses: ./.github/actions/android-build
+        uses: actions/download-artifact@v4
         with:
-          variant: Debug
-          cache-read-only: false
-          version-code: ${{ github.event.workflow_run.run_number }}
-          fc-url: ${{ secrets.FC_URL }}
-          cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
-          upload-cookie-url: ${{ secrets.UPLOAD_COOKIE_URL }}
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish latest release
         if: steps.check-paths.outputs.changed == 'true'
