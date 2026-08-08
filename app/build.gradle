@@ -94,6 +94,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     testImplementation 'junit:junit:4.13.2'
+    // 本地单测使用 android.jar stub，org.json 方法默认 not mocked；
+    // 引入真实实现让 FcUploaderTest 等能跑（CI 已纳入 testDebugUnitTest）
+    testImplementation 'org.json:json:20231013'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }

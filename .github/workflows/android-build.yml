@@ -2,10 +2,10 @@ name: Android CI
 
 # 触发规则（排除法）：
 # - 文档类变更（*.md、docs/**）：不触发 CI
-# - CI 工作流类变更（.github/**）：触发 CI + 冒烟测试，但 android-publish.yml 通过
+# - CI 工作流类变更（.github/**）：触发 CI，但 android-publish.yml 通过
 #   git diff 路径检查排除 .github/，不会触发发版
-# - 代码类变更（app/、build.gradle 等）：触发 CI + 冒烟测试，android-publish.yml
-#   等待本 workflow 成功后通过 workflow_run 发版，冒烟测试全程只跑一次
+# - 代码类变更（app/、build.gradle 等）：触发 CI，android-publish.yml
+#   等待本 workflow 成功后通过 workflow_run 复用本 workflow 上传的 APK 发版
 on:
   push:
     branches:
@@ -55,6 +55,16 @@ jobs:
           variant: Debug
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           version-code: ${{ github.run_number }}
+          # 发布的 APK 需要这三个 BuildConfig 值（云更新、上传 Cookie）；
+          # fork PR 拿不到 secrets 自然为空，不影响编译
+          fc-url: ${{ secrets.FC_URL }}
+          cloud-releases-page-url: ${{ secrets.CLOUD_RELEASES_PAGE_URL }}
+          upload-cookie-url: ${{ secrets.UPLOAD_COOKIE_URL }}
+
+      - name: Run unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -63,20 +73,3 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-  smoke-test:
-    name: Smoke Test on Emulator
-    runs-on: ubuntu-latest
-    needs: validate
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Run shared smoke test action
-        uses: ./.github/actions/android-smoke-test
-        with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
