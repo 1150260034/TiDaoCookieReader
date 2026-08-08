@@ -472,6 +472,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         appendLog("正在读取角色信息...");
         updateStatus("读取角色信息中...");
 
+        // 重置角色相关字段，避免"新Cookie + 读取失败"时携带上一账号的角色参数上传
+        roleInfo = new GameDatabaseReader.RoleInfo();
+
         // 设置当前uin，用于查找正确的数据库
         gameDatabaseReader.setCurrentUin(uin);
 

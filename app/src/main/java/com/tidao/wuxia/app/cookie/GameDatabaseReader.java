@@ -6,6 +6,7 @@ import android.util.Log;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -142,11 +143,13 @@ public class GameDatabaseReader {
                     listener.onRoleInfoReadFailed("找不到包含uin " + currentUin + " 的数据库");
                     return;
                 }
+                // 保存到局部变量，避免重复读取时实例字段被覆盖导致串库
+                final String targetDbPath = dbPath;
 
-                Log.d(TAG, "找到目标数据库: " + dbPath);
+                Log.d(TAG, "找到目标数据库: " + targetDbPath);
 
                 // 2. 复制游戏数据库到临时位置
-                boolean copySuccess = copyGameDatabaseWithSu(dbPath);
+                boolean copySuccess = copyGameDatabaseWithSu(targetDbPath);
                 if (!copySuccess) {
                     listener.onRoleInfoReadFailed("无法复制游戏数据库，可能没有 root 权限");
                     return;
@@ -157,7 +160,7 @@ public class GameDatabaseReader {
 
                 // 3.5 读取全民礼包抽奖群ID（查不到或出错返回空串，不影响主流程）
                 if (data != null) {
-                    data.lotteryGroupId = readLotteryGroupId();
+                    data.lotteryGroupId = readLotteryGroupId(targetDbPath);
                 }
 
                 // 4. 清理临时文件
@@ -445,43 +448,82 @@ public class GameDatabaseReader {
 
     /**
      * 读取全民礼包抽奖群ID（Session 表中最近活跃的群会话）
-     * 群会话行特征: f_groupId != 0，按最近消息时间倒序取第一条
+     * 群会话行特征: f_groupId != 0，用 MAX 聚合让裸列来自最近消息时间最大的行
      * 查不到或出错时返回空串，不影响现有流程
+     *
+     * @param dbPath 目标数据库路径（由调用方传入，避免读取可变的实例字段）
      */
-    private String readLotteryGroupId() {
+    private String readLotteryGroupId(String dbPath) {
+        Process process = null;
+        java.io.BufferedReader reader = null;
         try {
-            if (foundDbPath.isEmpty()) {
+            if (dbPath == null || dbPath.isEmpty()) {
                 Log.d(TAG, "未找到数据库路径，跳过群ID读取");
                 return "";
             }
 
             // 使用sqlite3命令行直接查询源数据库（与 Role 查询相同的模式）
-            String query = "SELECT DISTINCT f_groupId, f_roleName FROM Session WHERE f_groupId != 0 ORDER BY f_lastMsgUpdateTime DESC";
-            String cmd = "su -c \"sqlite3 " + foundDbPath + " \\\"" + query + "\\\"\"";
+            String query = "SELECT f_groupId, f_roleName, MAX(f_lastMsgUpdateTime) AS mt FROM Session WHERE f_groupId != 0 GROUP BY f_groupId ORDER BY mt DESC";
+            String cmd = "su -c \"sqlite3 " + dbPath + " \\\"" + query + "\\\"\"";
             Log.d(TAG, "执行查询: " + cmd);
 
-            Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", cmd});
-            java.io.BufferedReader reader = new java.io.BufferedReader(
+            ProcessBuilder pb = new ProcessBuilder("sh", "-c", cmd);
+            pb.redirectErrorStream(true); // 合并stderr，避免错误输出占满缓冲区导致子进程阻塞
+            process = pb.start();
+            reader = new java.io.BufferedReader(
                     new java.io.InputStreamReader(process.getInputStream()));
 
-            // 逐行解析 群ID|群名，取第一条（最近活跃）
+            // 逐行解析 群ID|群名|最近消息时间，取第一条（最近活跃）
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty()) continue;
                 String[] fields = line.split("\\|", -1);
-                if (fields.length >= 2 && !fields[0].isEmpty() && !"0".equals(fields[0])) {
+                if (fields.length >= 2 && isValidGroupId(fields[0])) {
                     Log.d(TAG, "读取到群: " + fields[1] + " (groupId=" + fields[0] + ")");
-                    reader.close();
-                    return fields[0];
+                    return fields[0]; // finally 中统一 destroy + 关闭流
                 }
             }
-            reader.close();
+
+            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
+            if (!finished) {
+                Log.e(TAG, "读取群ID超时");
+                return "";
+            }
+            int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                Log.e(TAG, "读取群ID失败, exit code: " + exitCode);
+                return "";
+            }
 
             Log.d(TAG, "未找到群会话");
         } catch (Exception e) {
             Log.e(TAG, "读取群ID失败", e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception ignored) {
+                }
+            }
+            if (process != null) {
+                process.destroy();
+            }
         }
         return "";
+    }
+
+    /**
+     * 校验群ID合法性：必须全数字且能解析为正的长整型
+     */
+    private boolean isValidGroupId(String groupId) {
+        if (groupId == null || !groupId.matches("\\d+")) {
+            return false;
+        }
+        try {
+            return Long.parseLong(groupId) > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /**
