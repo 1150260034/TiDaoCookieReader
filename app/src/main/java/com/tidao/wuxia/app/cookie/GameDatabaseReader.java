@@ -69,6 +69,7 @@ public class GameDatabaseReader {
         public String roleJob = "";     // 职业 (f_roleJob)
         public String serverName = "";  // 服务器名 (f_serverName)
         public String gameName = "";    // 游戏名 (f_gameName)
+        public String lotteryGroupId = ""; // 全民礼包抽奖群ID (Session 表 f_groupId)
         public java.util.List<SingleRole> allRoles = new java.util.ArrayList<>(); // 所有角色列表
 
         public boolean isComplete() {
@@ -153,6 +154,11 @@ public class GameDatabaseReader {
 
                 // 3. 读取复制后的数据库
                 RoleInfo data = readGameDatabase(context);
+
+                // 3.5 读取全民礼包抽奖群ID（查不到或出错返回空串，不影响主流程）
+                if (data != null) {
+                    data.lotteryGroupId = readLotteryGroupId();
+                }
 
                 // 4. 清理临时文件
                 cleanupTempFile();
@@ -435,6 +441,47 @@ public class GameDatabaseReader {
         }
 
         return result;
+    }
+
+    /**
+     * 读取全民礼包抽奖群ID（Session 表中最近活跃的群会话）
+     * 群会话行特征: f_groupId != 0，按最近消息时间倒序取第一条
+     * 查不到或出错时返回空串，不影响现有流程
+     */
+    private String readLotteryGroupId() {
+        try {
+            if (foundDbPath.isEmpty()) {
+                Log.d(TAG, "未找到数据库路径，跳过群ID读取");
+                return "";
+            }
+
+            // 使用sqlite3命令行直接查询源数据库（与 Role 查询相同的模式）
+            String query = "SELECT DISTINCT f_groupId, f_roleName FROM Session WHERE f_groupId != 0 ORDER BY f_lastMsgUpdateTime DESC";
+            String cmd = "su -c \"sqlite3 " + foundDbPath + " \\\"" + query + "\\\"\"";
+            Log.d(TAG, "执行查询: " + cmd);
+
+            Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", cmd});
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+
+            // 逐行解析 群ID|群名，取第一条（最近活跃）
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) continue;
+                String[] fields = line.split("\\|", -1);
+                if (fields.length >= 2 && !fields[0].isEmpty() && !"0".equals(fields[0])) {
+                    Log.d(TAG, "读取到群: " + fields[1] + " (groupId=" + fields[0] + ")");
+                    reader.close();
+                    return fields[0];
+                }
+            }
+            reader.close();
+
+            Log.d(TAG, "未找到群会话");
+        } catch (Exception e) {
+            Log.e(TAG, "读取群ID失败", e);
+        }
+        return "";
     }
 
     /**
