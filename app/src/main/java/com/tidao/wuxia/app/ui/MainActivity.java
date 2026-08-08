@@ -472,6 +472,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         appendLog("正在读取角色信息...");
         updateStatus("读取角色信息中...");
 
+        // 重置角色相关字段，避免"新Cookie + 读取失败"时携带上一账号的角色参数上传
+        roleInfo = new GameDatabaseReader.RoleInfo();
+
         // 设置当前uin，用于查找正确的数据库
         gameDatabaseReader.setCurrentUin(uin);
 
@@ -487,6 +490,7 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
                     roleInfo.serverName = data.serverName;
                     roleInfo.gameName = data.gameName;
                     roleInfo.allRoles = data.allRoles;
+                    roleInfo.lotteryGroupId = data.lotteryGroupId;
 
                     // 检查是否有多个角色需要选择
                     if (data.allRoles != null && data.allRoles.size() > 1) {
@@ -580,6 +584,9 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
         }
         if (!roleInfo.roleJob.isEmpty()) {
             appendLog("roleJob: " + roleInfo.roleJob);
+        }
+        if (!roleInfo.lotteryGroupId.isEmpty()) {
+            appendLog("群 ID: " + roleInfo.lotteryGroupId);
         }
 
         // 将角色信息同步到 cookieData（解决 BindingChecker iRet=101 问题）
@@ -1045,6 +1052,10 @@ public class MainActivity extends Activity implements AutomationReceiver.Automat
             roleParams.put("serverName", roleInfo.serverName);
             roleParams.put("areaName", roleInfo.areaName);
             roleParams.put("areaId", roleInfo.areaId);
+            // 全民礼包抽奖群ID，取不到则不上传该字段
+            if (roleInfo.lotteryGroupId != null && !roleInfo.lotteryGroupId.isEmpty()) {
+                roleParams.put("lotteryGroupId", roleInfo.lotteryGroupId);
+            }
 
             FcUploader.upload(accountName, cookieData.toCookieString(), roleParams,
                     prefsManager.getSckey(), prefsManager.getOwner(), prefsManager.getEmail(), mainHandler, new FcUploader.UploadCallback() {
