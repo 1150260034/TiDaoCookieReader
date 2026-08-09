@@ -5,25 +5,27 @@
 
 ## 用途
 
-独立 Android 子仓库，从已登录天刀助手（`com.tencent.gamehelper.wuxia`）的私有数据中读取 Cookie 和角色信息，无需抓包。App 依赖 Root 权限复制天刀助手 WebView Cookie 数据库和游戏角色数据库，再上传到根仓库 FC 的 `update-cookie` HTTP 函数。
+独立 Android 子仓库，从已登录天刀助手（`com.tencent.gamehelper.wuxia`）的私有数据中读取 Cookie 和角色信息，无需抓包。App 依赖 Root 权限复制天刀助手 WebView Cookie 数据库和游戏角色数据库。
+
+⚠️ 云端上传已下线（2026-08-09）：根仓库 FC `update-cookie` 函数已删除，账号绑定/Cookie 更新迁移至网页版 https://miao.zyzl.link 扫码绑定；App 内「上传到云端」按钮已禁用，`uploadToCloud()` 只提示迁移。`FcUploader`/`ServerChanBinder` 类暂保留但 UI 已不再调用。
 
 ## 关键文件
 
 | 文件 | 说明 |
 |------|------|
-| `app/src/main/java/com/tidao/wuxia/app/ui/MainActivity.java` | 主界面：读取/上传编排、Server酱绑定、邮箱弹窗、角色选择、更新下载 |
+| `app/src/main/java/com/tidao/wuxia/app/ui/MainActivity.java` | 主界面：读取编排、Server酱绑定、邮箱弹窗、角色选择、更新下载（上传已禁用） |
 | `app/src/main/java/com/tidao/wuxia/app/AutomationReceiver.java` | ADB 广播接收器：自动化触发读取/复制/检测/上传 |
 | `app/src/main/java/com/tidao/wuxia/app/cookie/WebViewCookieReader.java` | su 复制并读取 WebView Cookie 数据库（access_token、openid、uin 等） |
 | `app/src/main/java/com/tidao/wuxia/app/cookie/GameDatabaseReader.java` | su 遍历数字数据库并读取角色信息（按 uin 定位，支持多角色选择） |
 | `app/src/main/java/com/tidao/wuxia/app/cookie/BindingChecker.java` | AMS 974294 登录验证接口检测每日福利绑定状态 |
 | `app/src/main/java/com/tidao/wuxia/app/cookie/CookieExtractor.java` | 旧流量解析器；`CookieData` 数据类仍被全项目复用 |
-| `app/src/main/java/com/tidao/wuxia/app/net/FcUploader.java` | 构建上传 JSON 并 POST 到 `BuildConfig.UPLOAD_COOKIE_URL`，处理 400/403/其他 HTTP 错误 |
+| `app/src/main/java/com/tidao/wuxia/app/net/FcUploader.java` | （已下线，UI 不再调用）构建上传 JSON 并 POST 到 `BuildConfig.UPLOAD_COOKIE_URL` |
 | `app/src/main/java/com/tidao/wuxia/app/net/ServerChanBinder.java` | WebView 弹窗绑定 Server酱 sendkey，回调中验证 sckey 有效性 |
 | `app/src/main/java/com/tidao/wuxia/app/data/PrefsManager.java` | SharedPreferences 存储 sckey、owner、email |
 | `app/src/main/java/com/tidao/wuxia/app/utils/UpdateChecker.java` | 双源更新检查：云函数优先（国内 CDN），GitHub API 回退 |
 | `app/src/main/java/com/tidao/wuxia/app/utils/VersionUtils.java` | 纯 Java 版本号解析与比较，无 Android 运行时依赖，可供单元测试直接使用 |
 | `app/src/main/java/com/tidao/wuxia/app/utils/RootChecker.java` | Root 权限检测（su 命令、常见路径、test-keys） |
-| `app/build.gradle` | Android 配置、版本号（baseVersion 1.3）、BuildConfig 注入 |
+| `app/build.gradle` | Android 配置、版本号（baseVersion 1.4）、BuildConfig 注入 |
 | `settings.gradle` | Maven 仓库顺序：官方源优先，阿里云镜像兜底 |
 | `app/debug.keystore` | 统一 Debug 签名证书，允许入库，保证本地与 CI APK 签名一致 |
 
@@ -48,7 +50,7 @@
 - **子仓库有独立 .git**，提交必须 `cd TiDaoCookieReader` 后单独操作，不能在根仓库直接提交子仓库变更。
 - **构建需要 Java 17**：AGP 8.5.0 + JDK 17；本地只有 Java 8 时 `assembleDebug` 会失败。GitHub Actions 使用 Temurin 17。
 - **Maven 仓库顺序不可颠倒**：`settings.gradle` 必须 `google()` > `mavenCentral()` > `gradlePluginPortal()` > 阿里云镜像。阿里云放前面在 GitHub Actions 上会遇 502 导致依赖解析失败。
-- **BuildConfig 注入**：`FC_URL`、`CLOUD_RELEASES_PAGE_URL`、`UPLOAD_COOKIE_URL` 由 CI 通过环境变量注入。本地构建为空串时，更新检查自动回退 GitHub 通道；上传功能需要 CI 构建才能使用。
+- **BuildConfig 注入**：`FC_URL`、`CLOUD_RELEASES_PAGE_URL`、`UPLOAD_COOKIE_URL` 由 CI 通过环境变量注入。本地构建为空串时，更新检查自动回退 GitHub 通道；`UPLOAD_COOKIE_URL` 已随上传下线失去用途，仅保留兼容。
 - **Root 是硬性依赖**：App 通过 `su` 访问天刀助手私有数据（Cookie DB + 角色 DB），无 Root 则核心功能不可用。
 
 ### 测试要求
@@ -161,12 +163,10 @@ GameDatabaseReader su 遍历数字数据库读取角色信息（按 uin 定位�
         ↓
 BindingChecker 调 AMS 974294 检测每日福利绑定状态
         ↓
-MainActivity 绑定/验证 Server酱 sendkey + 可选邮箱
-        ↓
-FcUploader POST JSON 到 BuildConfig.UPLOAD_COOKIE_URL
+本地展示/复制（上传链路已下线，绑定更新走网页版 miao.zyzl.link）
 ```
 
-上传 JSON 必须包含：`name`、`cookies`、`role_params`、`sckey`、`owner`、`email`（可空字符串）。
+> 历史上传链路（已下线）：MainActivity 绑定 Server酱 sendkey → FcUploader POST 到 BuildConfig.UPLOAD_COOKIE_URL，上传 JSON 含 `name`、`cookies`、`role_params`、`sckey`、`owner`、`email`。
 
 ## ADB 自动化
 

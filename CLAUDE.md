@@ -4,7 +4,9 @@
 
 ## 项目概述
 
-天刀助手 Cookie 读取器，从已登录天刀助手（`com.tencent.gamehelper.wuxia`）的私有数据中读取 Cookie 和角色信息，无需抓包。App 依赖 Root 权限复制天刀助手 WebView Cookie 数据库和游戏角色数据库，再上传到根仓库 FC 的 `update-cookie` HTTP 函数。
+天刀助手 Cookie 读取器，从已登录天刀助手（`com.tencent.gamehelper.wuxia`）的私有数据中读取 Cookie 和角色信息，无需抓包。App 依赖 Root 权限复制天刀助手 WebView Cookie 数据库和游戏角色数据库。
+
+⚠️ 云端上传已下线（2026-08-09）：FC `update-cookie` 已删除，绑定/更新迁移至网页版 https://miao.zyzl.link 扫码绑定；App 上传按钮已禁用，`FcUploader` 保留但 UI 不再调用。
 
 当前能力：
 
@@ -76,19 +78,10 @@ GameDatabaseReader 读取 Role 表并选择角色
         ↓
 BindingChecker 调 AMS 974294 检测绑定状态
         ↓
-MainActivity 绑定/读取 Server酱与可选邮箱
-        ↓
-FcUploader POST 到 BuildConfig.UPLOAD_COOKIE_URL
+本地展示/复制（上传链路已下线，绑定更新走网页版 miao.zyzl.link）
 ```
 
-上传 JSON 必须包含：
-
-- `name`
-- `cookies`
-- `role_params`
-- `sckey`
-- `owner`
-- `email`（可空字符串）
+> 历史上传 JSON（已下线）：`name`、`cookies`、`role_params`、`sckey`、`owner`、`email`（可空字符串）。
 
 后端语义：缺少 `email` 表示保留旧邮箱；空字符串表示清空邮箱；非空邮箱会先测试发送成功才保存。
 
@@ -148,9 +141,9 @@ CI 通过 `.github/actions/android-build` 注入：
 
 - `FC_URL`: 云函数更新检查 URL。
 - `CLOUD_RELEASES_PAGE_URL`: 云端更新详情页 URL。
-- `UPLOAD_COOKIE_URL`: Cookie 上传 URL。
+- `UPLOAD_COOKIE_URL`: Cookie 上传 URL（已随上传下线失去用途，仅保留兼容）。
 
-本地为空时，更新检查自动回退 GitHub 通道；上传功能需要构建时注入有效 URL 才能使用。
+本地为空时，更新检查自动回退 GitHub 通道。
 
 ## ADB 自动化
 

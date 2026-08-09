@@ -16,10 +16,11 @@
     <string name="status_waiting">⏳ 等待操作</string>
     <string name="action_open_tiandao">🎮 打开天刀助手</string>
     <string name="action_read_cookie">🔍 读取 Cookie</string>
-    <string name="action_upload_cloud">☁️ 上传到云端</string>
+    <string name="action_upload_cloud">☁️ 上传已迁移至网页版</string>
+    <string name="upload_deprecated_hint">云端上传已下线，请使用网页版扫码绑定：https://miao.zyzl.link</string>
     <string name="action_install_tiandao">📥 安装天刀助手</string>
     
     <string name="tutorial_title">📘 使用步骤</string>
-    <string name="tutorial_content">1. 首次使用请先「安装天刀助手」\n2. 点击「打开天刀助手」，扫码登录QQ\n3. 在助手中点击「周周载愿」按钮\n4. 切回本App，点击「读取 Cookie」\n5. 选择角色后，点击「上传到云端」</string>
+    <string name="tutorial_content">1. 首次使用请先「安装天刀助手」\n2. 点击「打开天刀助手」，扫码登录QQ\n3. 在助手中点击「周周载愿」按钮\n4. 切回本App，点击「读取 Cookie」可本地查看\n5. 绑定/更新账号请用网页版：打开 miao.zyzl.link，邮箱登录后扫码绑定</string>
     <string name="log_title">📝 操作日志</string>
 </resources>
